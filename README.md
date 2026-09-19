@@ -60,6 +60,15 @@ Agregar un proveedor de cuotas o un operador afiliado es implementar la interfaz
 
 La especificación original está en [documento_de_especificaci_n_master.md](./documento_de_especificaci_n_master.md). El código se le adelantó en varios puntos (por ejemplo, la variable de Jev es `TYPESAFE_API_KEY`, no `JEV_API_KEY`); ante la duda, manda el código.
 
+## Tests
+
+```bash
+pnpm test        # una corrida
+pnpm test:watch  # en modo watch
+```
+
+Cubren la lógica que puede romperse en silencio: cuota de la combinada, el filtro de Juego Responsable, el mapeo de The Odds API (con `fetch` simulado) y el repositorio en memoria del modo demo. Corren sin credenciales, igual que en CI.
+
 ## Contribuir
 
 Consulta [CONTRIBUTING.md](./CONTRIBUTING.md).

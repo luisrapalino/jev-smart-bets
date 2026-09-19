@@ -23,4 +23,7 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
+      - run: pnpm test
+      # Sin variables de entorno: el build tiene que pasar en modo demo,
+      # que es como lo encuentra cualquiera que clone el repo.
       - run: pnpm build
