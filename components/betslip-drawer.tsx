@@ -16,12 +16,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useBetslipStore } from '@/lib/store/use-betslip-store';
 import { calculateParlayOdds, cn, formatCurrency, formatOdds } from '@/lib/utils';
+import { AFFILIATE_OPERATORS } from '@/lib/affiliates/operators';
 
 export function BetslipDrawer() {
   const { selections, stake, isOpen, removeSelection, setStake, toggleOpen, clearSlip } =
     useBetslipStore();
   const [isConfirming, setIsConfirming] = useState(false);
   const [confirmError, setConfirmError] = useState<string | null>(null);
+  const [operatorId, setOperatorId] = useState(AFFILIATE_OPERATORS[0].id);
 
   const totalOdds = calculateParlayOdds(selections.map((s) => s.odds));
   const potentialPayout = stake * totalOdds;
@@ -34,13 +36,14 @@ export function BetslipDrawer() {
       const res = await fetch('/api/bets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ totalOdds, stake, potentialPayout }),
+        body: JSON.stringify({ totalOdds, stake, potentialPayout, operatorId }),
       });
 
+      const json = await res.json();
       if (!res.ok) throw new Error('Error al confirmar');
 
-      // TODO: redirigir al operador afiliado (ver seccion 2.2 de la spec).
       clearSlip();
+      window.open(json.redirectUrl, '_blank', 'noopener,noreferrer');
     } catch {
       setConfirmError('No se pudo confirmar la apuesta. Intenta de nuevo.');
     } finally {
@@ -122,6 +125,26 @@ export function BetslipDrawer() {
               <div className="text-right">
                 <p className="text-muted-foreground text-xs">Cuota total {formatOdds(totalOdds)}</p>
                 <p className="text-sm font-semibold">{formatCurrency(potentialPayout)}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 text-sm">
+              <span className="text-muted-foreground">Operador</span>
+              <div className="flex flex-1 gap-1">
+                {AFFILIATE_OPERATORS.map((op) => (
+                  <button
+                    key={op.id}
+                    type="button"
+                    onClick={() => setOperatorId(op.id)}
+                    className={cn(
+                      'flex-1 rounded-md border px-2 py-1.5 text-xs font-medium transition-colors',
+                      operatorId === op.id
+                        ? 'border-primary bg-primary/10 text-primary'
+                        : 'text-muted-foreground hover:bg-accent'
+                    )}
+                  >
+                    {op.name}
+                  </button>
+                ))}
               </div>
             </div>
             <div className="flex gap-2">

@@ -14,5 +14,6 @@ export const betHistory = pgTable('bet_history', {
   stake: doublePrecision('stake').notNull(),
   potentialPayout: doublePrecision('potential_payout').notNull(),
   status: text('status').default('PENDING').notNull(), // PENDING, WON, LOST
+  operatorId: text('operator_id'), // casa de apuestas afiliada elegida (ver lib/affiliates)
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
