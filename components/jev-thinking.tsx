@@ -2,6 +2,8 @@
 
 import { useEffect, useRef } from 'react';
 
+import { readCssTimeMs } from '@/lib/ui/css-time';
+
 // El estado mas largo define el ancho de la caja (sizer), para que las
 // lineas no cambien de ancho al intercambiarse.
 const STATES = [
@@ -11,13 +13,6 @@ const STATES = [
 ];
 const LONGEST = STATES.reduce((a, b) => (a.length >= b.length ? a : b));
 
-function readMs(name: string, fallback: number): number {
-  const value = parseFloat(
-    getComputedStyle(document.documentElement).getPropertyValue(name)
-  );
-  return Number.isFinite(value) ? value : fallback;
-}
-
 export function JevThinking() {
   const boxRef = useRef<HTMLSpanElement>(null);
 
@@ -26,14 +21,22 @@ export function JevThinking() {
     if (!box) return;
 
     // Las lineas se crean de forma imperativa (no via React) para que el
-    // ciclo pueda removerlas sin pelear con la reconciliacion.
-    const first = document.createElement('span');
-    first.className = 't-think-text';
-    first.textContent = STATES[0];
-    first.setAttribute('data-text', STATES[0]);
-    box.appendChild(first);
+    // ciclo pueda removerlas sin pelear con la reconciliacion. Se lleva
+    // registro de las creadas: el cleanup tiene que retirarlas o el doble
+    // efecto de Strict Mode deja una linea fantasma debajo de la viva.
+    const created: HTMLSpanElement[] = [];
 
-    let live = first;
+    function createLine(text: string, className: string): HTMLSpanElement {
+      const line = document.createElement('span');
+      line.className = className;
+      line.textContent = text;
+      line.setAttribute('data-text', text);
+      created.push(line);
+      box!.appendChild(line);
+      return line;
+    }
+
+    let live = createLine(STATES[0], 't-think-text');
     let index = 0;
     let cancelled = false;
     const timers: number[] = [];
@@ -43,18 +46,14 @@ export function JevThinking() {
         window.setTimeout(() => {
           if (cancelled) return;
 
-          const swap = readMs('--think-swap', 150);
-          const gap = readMs('--think-gap', 50);
+          const swap = readCssTimeMs('--think-swap', 150);
+          const gap = readCssTimeMs('--think-gap', 50);
           const leaving = live;
           index = (index + 1) % STATES.length;
 
           leaving.classList.add('is-exit');
 
-          const next = document.createElement('span');
-          next.className = 't-think-text is-enter-start';
-          next.textContent = STATES[index];
-          next.setAttribute('data-text', STATES[index]);
-          box!.appendChild(next);
+          const next = createLine(STATES[index], 't-think-text is-enter-start');
           live = next;
 
           const release = () => {
@@ -70,7 +69,7 @@ export function JevThinking() {
               cycle();
             }, swap + gap)
           );
-        }, readMs('--think-hold', 2000))
+        }, readCssTimeMs('--think-hold', 2000))
       );
     }
     cycle();
@@ -78,6 +77,7 @@ export function JevThinking() {
     return () => {
       cancelled = true;
       timers.forEach((id) => window.clearTimeout(id));
+      created.forEach((line) => line.remove());
     };
   }, []);
 

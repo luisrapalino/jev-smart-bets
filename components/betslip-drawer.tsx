@@ -67,12 +67,25 @@ export function BetslipDrawer() {
 
   return (
     <>
-      <AnimatePresence>
+      {/* initial={false}: el boleto se restaura de localStorage, asi que sin
+          esto la barra "entra" en cada carga de pagina. La entrada solo debe
+          correr cuando el usuario agrega una seleccion. */}
+      <AnimatePresence initial={false}>
         {selections.length > 0 && !isOpen && (
           <motion.button
-            initial={{ y: 80, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 80, opacity: 0 }}
+            initial={{ y: 12, opacity: 0, filter: 'blur(4px)' }}
+            animate={{
+              y: 0,
+              opacity: 1,
+              filter: 'blur(0px)',
+              transition: { duration: 0.3, ease: 'easeOut' },
+            }}
+            exit={{
+              y: 12,
+              opacity: 0,
+              filter: 'blur(4px)',
+              transition: { duration: 0.15, ease: 'easeOut' },
+            }}
             onClick={() => toggleOpen()}
             className={cn(
               'bg-bulb text-primary-foreground fixed inset-x-4 bottom-4 z-40 flex items-center justify-between rounded-md px-4 py-3 sm:inset-x-auto sm:right-6 sm:w-80'
@@ -143,7 +156,7 @@ export function BetslipDrawer() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="size-8 transition-[scale,color] duration-150 ease-out active:scale-[0.96]"
+                      className="size-8"
                       onClick={() => removeSelection(s.id)}
                       aria-label={`Quitar ${s.selection}`}
                     >
@@ -200,13 +213,13 @@ export function BetslipDrawer() {
             <div className="flex gap-2">
               <Button
                 variant="outline"
-                className="flex-1 transition-[scale,background-color] duration-150 ease-out active:scale-[0.96]"
+                className="flex-1"
                 onClick={clearSlip}
               >
                 Limpiar
               </Button>
               <Button
-                className="flex-1 transition-[scale,background-color] duration-150 ease-out active:scale-[0.96]"
+                className="flex-1"
                 disabled={selections.length === 0 || isConfirming}
                 onClick={handleConfirm}
               >

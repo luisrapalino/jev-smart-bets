@@ -3,29 +3,37 @@
 import { useEffect, useRef } from 'react';
 
 import { cn } from '@/lib/utils';
+import { readCssTimeMs } from '@/lib/ui/css-time';
 
 /**
  * Number pop-in (transitions.dev): cada caracter vuelve a entrar con un
- * desenfoque cuando el valor cambia. No anima en el montaje -- solo
- * cuando el numero se actualiza -- para que cargar el feed completo no
- * dispare cientos de animaciones a la vez.
+ * desenfoque cuando el valor cambia.
+ *
+ * Se compara contra el valor anterior en vez de usar un flag de montaje:
+ * con el doble efecto de Strict Mode, el flag se marcaba en la primera
+ * pasada y la segunda animaba igual, de modo que el tablero entero
+ * animaba al cargar. La clase se retira al terminar para que la pista de
+ * `will-change` no quede viva en cientos de digitos en reposo.
  */
 export function PopNumber({ value, className }: { value: string; className?: string }) {
   const groupRef = useRef<HTMLSpanElement>(null);
-  const mounted = useRef(false);
+  const previousValue = useRef(value);
 
   useEffect(() => {
     const group = groupRef.current;
-    if (!group) return;
+    if (!group || previousValue.current === value) return;
 
-    if (!mounted.current) {
-      mounted.current = true;
-      return;
-    }
+    previousValue.current = value;
 
     group.classList.remove('is-animating');
     void group.offsetHeight; // force reflow
     group.classList.add('is-animating');
+
+    const settleMs =
+      readCssTimeMs('--digit-dur', 500) + readCssTimeMs('--digit-stagger', 70) * 2;
+    const timer = window.setTimeout(() => group.classList.remove('is-animating'), settleMs);
+
+    return () => window.clearTimeout(timer);
   }, [value]);
 
   const chars = value.split('');

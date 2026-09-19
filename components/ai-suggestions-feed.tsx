@@ -76,7 +76,7 @@ export function AiSuggestionsFeed({
               <Button
                 size="icon"
                 variant={isSelected ? 'default' : 'outline'}
-                className="size-8 transition-[scale,background-color] duration-150 ease-out active:scale-[0.96]"
+                className="size-8"
                 onClick={() =>
                   addSelection({
                     id: selectionId,

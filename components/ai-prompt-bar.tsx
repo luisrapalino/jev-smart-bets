@@ -51,7 +51,9 @@ export function AiPromptBar({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-1.5">
-      <div className="border-rule flex flex-col gap-2 rounded-md border p-1.5 sm:flex-row sm:items-center">
+      {/* Radio concentrico: el contenedor lleva 6px de padding y el boton
+          interno 6px de radio, asi que el exterior va en 12px. */}
+      <div className="border-rule flex flex-col gap-2 rounded-xl border p-1.5 sm:flex-row sm:items-center">
         <div className="relative flex-1">
           <Sparkles
             className="text-bulb absolute top-1/2 left-3 size-4 -translate-y-1/2"
@@ -67,7 +69,7 @@ export function AiPromptBar({
         </div>
         <Button
           type="submit"
-          className="h-10 transition-[scale,background-color] duration-150 ease-out active:scale-[0.96]"
+          className="h-10"
           disabled={isLoading || !prompt.trim()}
         >
           {isLoading ? 'Consultando' : 'Preguntar a Jev'}
