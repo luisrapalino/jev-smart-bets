@@ -1,19 +1,21 @@
 import { NextResponse } from 'next/server';
 
 import { oddsProvider } from '@/lib/odds/adapter';
+import { getCached, setCached } from '@/lib/cache/kv';
+import type { Match } from '@/lib/odds/types';
 
-// Cache en memoria de corta duracion. En produccion, reemplazar por
-// Vercel KV / Redis compartido entre instancias serverless.
-let cache: { data: Awaited<ReturnType<typeof oddsProvider.getMatches>>; expiresAt: number } | null = null;
-const CACHE_TTL_MS = 15_000;
+const CACHE_KEY = 'odds:matches';
+const CACHE_TTL_SECONDS = 15;
 
 export async function GET() {
-  if (cache && cache.expiresAt > Date.now()) {
-    return NextResponse.json({ success: true, data: cache.data, cached: true });
+  const cached = await getCached<Match[]>(CACHE_KEY);
+
+  if (cached) {
+    return NextResponse.json({ success: true, data: cached, cached: true });
   }
 
   const matches = await oddsProvider.getMatches();
-  cache = { data: matches, expiresAt: Date.now() + CACHE_TTL_MS };
+  await setCached(CACHE_KEY, matches, CACHE_TTL_SECONDS);
 
   return NextResponse.json({ success: true, data: matches, cached: false });
 }
