@@ -18,6 +18,8 @@ import { useBetslipStore } from '@/lib/store/use-betslip-store';
 import { calculateParlayOdds, cn, formatCurrency, formatOdds } from '@/lib/utils';
 import { AFFILIATE_OPERATORS } from '@/lib/affiliates/operators';
 import { TeamBadge } from '@/lib/ui/team-badge';
+import { PopNumber } from '@/lib/ui/pop-number';
+import { BetConfirmedToast } from '@/components/bet-confirmed-toast';
 
 export function BetslipDrawer() {
   const { selections, stake, isOpen, removeSelection, setStake, toggleOpen, clearSlip } =
@@ -26,9 +28,12 @@ export function BetslipDrawer() {
   const [confirmError, setConfirmError] = useState<string | null>(null);
   const [operatorId, setOperatorId] = useState(AFFILIATE_OPERATORS[0].id);
   const [riskWarning, setRiskWarning] = useState<string | null>(null);
+  const [confirmed, setConfirmed] = useState(false);
 
   const totalOdds = calculateParlayOdds(selections.map((s) => s.odds));
   const potentialPayout = stake * totalOdds;
+  const operatorName =
+    AFFILIATE_OPERATORS.find((op) => op.id === operatorId)?.name ?? 'el operador';
 
   async function handleConfirm() {
     setIsConfirming(true);
@@ -49,6 +54,9 @@ export function BetslipDrawer() {
       }
 
       clearSlip();
+      if (isOpen) toggleOpen();
+      setConfirmed(true);
+      window.setTimeout(() => setConfirmed(false), 4000);
       window.open(json.redirectUrl, '_blank', 'noopener,noreferrer');
     } catch {
       setConfirmError('No se pudo confirmar la apuesta. Intenta de nuevo.');
@@ -151,7 +159,10 @@ export function BetslipDrawer() {
               </label>
               <div className="text-right">
                 <p className="text-muted-foreground text-xs">Cuota total {formatOdds(totalOdds)}</p>
-                <p className="text-sm font-semibold">{formatCurrency(potentialPayout)}</p>
+                <PopNumber
+                  value={formatCurrency(potentialPayout)}
+                  className="text-sm font-semibold"
+                />
               </div>
             </div>
             <div className="flex items-center gap-2 text-sm">
@@ -196,6 +207,8 @@ export function BetslipDrawer() {
           </DrawerFooter>
         </DrawerContent>
       </Drawer>
+
+      <BetConfirmedToast open={confirmed} operatorName={operatorName} />
     </>
   );
 }

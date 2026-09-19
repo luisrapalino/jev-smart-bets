@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { cn, formatOdds } from '@/lib/utils';
 import { useBetslipStore } from '@/lib/store/use-betslip-store';
 import { TeamBadge } from '@/lib/ui/team-badge';
+import { PopNumber } from '@/lib/ui/pop-number';
 import type { Match } from '@/lib/odds/types';
 
 export function MatchCard({ match }: { match: Match }) {
@@ -90,7 +91,7 @@ export function MatchCard({ match }: { match: Match }) {
                 }
               >
                 <span className="text-xs opacity-80">{sel.label}</span>
-                <span className="font-semibold">{formatOdds(sel.odds)}</span>
+                <PopNumber value={formatOdds(sel.odds)} className="font-semibold" />
               </Button>
             );
           })}

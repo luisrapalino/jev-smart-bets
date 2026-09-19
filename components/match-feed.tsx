@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { AlertCircle } from 'lucide-react';
 
@@ -46,12 +47,32 @@ function MatchCardSkeleton() {
   );
 }
 
+// Tope del escalonado: con muchas tarjetas por liga, un delay lineal
+// haria esperar demasiado a las ultimas.
+const MAX_STAGGER_STEPS = 8;
+
 export function MatchFeed() {
   const { data, isLoading, isError } = useQuery({
     queryKey: ['matches'],
     queryFn: fetchMatches,
     refetchInterval: 15_000,
   });
+
+  // La entrada escalonada se juega una sola vez, en la primera carga: el
+  // refetch cada 15s no debe volver a animar todo el feed.
+  const [revealed, setRevealed] = useState(false);
+  const hasData = Boolean(data);
+  const frame = useRef<number>(undefined);
+
+  useEffect(() => {
+    if (!hasData || revealed) return;
+    // Un frame de espera deja pintar el estado inicial (oculto) antes de
+    // aplicar .is-shown, que es lo que dispara la transicion.
+    frame.current = requestAnimationFrame(() => setRevealed(true));
+    return () => {
+      if (frame.current !== undefined) cancelAnimationFrame(frame.current);
+    };
+  }, [hasData, revealed]);
 
   if (isLoading) {
     return (
@@ -91,9 +112,25 @@ export function MatchFeed() {
               <h3 className="text-sm font-semibold">{league}</h3>
               <span className="text-muted-foreground text-xs">{matches.length}</span>
             </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {matches.map((match) => (
-                <MatchCard key={match.id} match={match} />
+            <div
+              className={cn(
+                't-stagger grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3',
+                revealed && 'is-shown'
+              )}
+            >
+              {matches.map((match, i) => (
+                <div
+                  key={match.id}
+                  className="t-stagger-line"
+                  style={{
+                    transitionDelay: `calc(var(--stagger-stagger) * ${Math.min(
+                      i,
+                      MAX_STAGGER_STEPS
+                    )})`,
+                  }}
+                >
+                  <MatchCard match={match} />
+                </div>
               ))}
             </div>
           </div>

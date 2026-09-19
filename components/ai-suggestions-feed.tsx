@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { cn, formatOdds } from '@/lib/utils';
 import { useBetslipStore } from '@/lib/store/use-betslip-store';
 import { TeamBadge } from '@/lib/ui/team-badge';
+import { JevThinking } from '@/components/jev-thinking';
 import type { JevBetResponse } from '@/lib/jev/schemas';
 
 const riskColor: Record<JevBetResponse['riskProfile'], string> = {
@@ -30,7 +31,7 @@ export function AiSuggestionsFeed({
       <Card className="border-primary/30 bg-primary/5">
         <CardContent className="flex items-center justify-center gap-2 py-6 text-center">
           <Sparkles className="text-primary size-4 animate-pulse" />
-          <p className="text-muted-foreground text-sm">Jev esta armando tu boleto...</p>
+          <JevThinking />
         </CardContent>
       </Card>
     );
