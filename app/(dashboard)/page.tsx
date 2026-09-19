@@ -18,15 +18,17 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="mx-auto flex max-w-5xl flex-col gap-4 pb-24">
-      <AiPromptBar onResult={handleJevResult} />
+    <div className="mx-auto flex max-w-5xl flex-col gap-6 pb-24">
+      <div className="-mt-9">
+        <AiPromptBar onResult={handleJevResult} />
+      </div>
 
       {(jevLoading || jevResult) && (
         <AiSuggestionsFeed result={jevResult} isLoading={jevLoading} />
       )}
 
       <div>
-        <h2 className="mb-2 text-sm font-semibold">Partidos en vivo y proximos</h2>
+        <h2 className="mb-3 text-base font-semibold">Partidos en vivo y proximos</h2>
         <MatchFeed />
       </div>
 

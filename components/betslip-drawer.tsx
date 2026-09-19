@@ -17,6 +17,7 @@ import { Input } from '@/components/ui/input';
 import { useBetslipStore } from '@/lib/store/use-betslip-store';
 import { calculateParlayOdds, cn, formatCurrency, formatOdds } from '@/lib/utils';
 import { AFFILIATE_OPERATORS } from '@/lib/affiliates/operators';
+import { TeamBadge } from '@/lib/ui/team-badge';
 
 export function BetslipDrawer() {
   const { selections, stake, isOpen, removeSelection, setStake, toggleOpen, clearSlip } =
@@ -115,15 +116,18 @@ export function BetslipDrawer() {
               selections.map((s) => (
                 <div
                   key={s.id}
-                  className="flex items-center justify-between rounded-md border px-3 py-2"
+                  className="flex items-center justify-between gap-2 rounded-md border px-3 py-2"
                 >
-                  <div>
-                    <p className="text-sm font-medium">{s.matchName}</p>
-                    <p className="text-muted-foreground text-xs">
-                      {s.market} &middot; {s.selection}
-                    </p>
+                  <div className="flex items-center gap-2 overflow-hidden">
+                    <TeamBadge name={s.selection} size="sm" />
+                    <div className="overflow-hidden">
+                      <p className="truncate text-sm font-medium">{s.matchName}</p>
+                      <p className="text-muted-foreground truncate text-xs">
+                        {s.market} &middot; {s.selection}
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex shrink-0 items-center gap-2">
                     <span className="text-sm font-semibold">{formatOdds(s.odds)}</span>
                     <Button variant="ghost" size="icon" onClick={() => removeSelection(s.id)}>
                       <Trash2 className="text-destructive size-4" />

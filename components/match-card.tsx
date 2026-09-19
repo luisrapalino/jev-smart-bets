@@ -2,10 +2,11 @@
 
 import { TrendingDown, TrendingUp, Minus } from 'lucide-react';
 
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { cn, formatOdds } from '@/lib/utils';
 import { useBetslipStore } from '@/lib/store/use-betslip-store';
+import { TeamBadge } from '@/lib/ui/team-badge';
 import type { Match } from '@/lib/odds/types';
 
 export function MatchCard({ match }: { match: Match }) {
@@ -26,22 +27,16 @@ export function MatchCard({ match }: { match: Match }) {
   };
 
   return (
-    <Card>
-      <CardHeader className="flex-row items-center justify-between">
-        <div>
-          <p className="text-muted-foreground text-xs">{match.league}</p>
-          <p className="text-sm font-medium">
-            {match.homeTeam} vs {match.awayTeam}
-          </p>
-        </div>
-        <div className="flex items-center gap-1">
+    <Card className="gap-3 py-3 transition-shadow hover:shadow-md">
+      <CardContent className="flex flex-col gap-3">
+        <div className="flex items-center justify-between text-xs">
           {match.isLive ? (
-            <span className="flex items-center gap-1 text-xs font-semibold text-destructive">
+            <span className="flex items-center gap-1.5 font-semibold text-destructive">
               <span className="size-1.5 animate-pulse rounded-full bg-destructive" />
-              EN VIVO {match.minute}&apos;
+              EN VIVO {match.minute ? `${match.minute}'` : ''}
             </span>
           ) : (
-            <span className="text-muted-foreground text-xs">
+            <span className="text-muted-foreground">
               {new Date(match.startTime).toLocaleTimeString('es-CO', {
                 hour: '2-digit',
                 minute: '2-digit',
@@ -50,14 +45,30 @@ export function MatchCard({ match }: { match: Match }) {
           )}
           <Trend className={cn('size-4', trendColor)} />
         </div>
-      </CardHeader>
-      <CardContent>
-        {match.isLive && match.homeScore !== undefined && match.awayScore !== undefined && (
-          <p className="mb-2 text-lg font-semibold">
-            {match.homeScore} - {match.awayScore}
-          </p>
-        )}
-        <div className="grid grid-cols-3 gap-2">
+
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex flex-1 items-center gap-2 overflow-hidden">
+            <TeamBadge name={match.homeTeam} />
+            <span className="truncate text-sm font-medium">{match.homeTeam}</span>
+          </div>
+          {match.isLive && match.homeScore !== undefined ? (
+            <span className="text-lg font-bold tabular-nums">{match.homeScore}</span>
+          ) : (
+            <span className="text-muted-foreground text-[10px] font-semibold">VS</span>
+          )}
+        </div>
+
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex flex-1 items-center gap-2 overflow-hidden">
+            <TeamBadge name={match.awayTeam} />
+            <span className="truncate text-sm font-medium">{match.awayTeam}</span>
+          </div>
+          {match.isLive && match.awayScore !== undefined && (
+            <span className="text-lg font-bold tabular-nums">{match.awayScore}</span>
+          )}
+        </div>
+
+        <div className="grid grid-cols-3 gap-2 pt-1">
           {match.market1x2.map((sel) => {
             const selectionId = `${match.id}-1x2-${sel.label}`;
             const isSelected = selections.some((s) => s.id === selectionId);

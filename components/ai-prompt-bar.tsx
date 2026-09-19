@@ -50,23 +50,23 @@ export function AiPromptBar({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-2">
-      <div className="flex items-center gap-2">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-1.5">
+      <div className="border-border bg-card flex flex-col gap-2 rounded-2xl border p-2 shadow-lg sm:flex-row sm:items-center">
         <div className="relative flex-1">
           <Sparkles className="text-primary absolute top-1/2 left-3 size-4 -translate-y-1/2" />
           <Input
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             placeholder={EXAMPLE_PROMPT}
-            className="pl-9"
+            className="h-11 border-none pl-9 shadow-none focus-visible:ring-0"
             disabled={isLoading}
           />
         </div>
-        <Button type="submit" disabled={isLoading || !prompt.trim()}>
+        <Button type="submit" size="lg" className="h-11" disabled={isLoading || !prompt.trim()}>
           {isLoading ? 'Pensando...' : 'Preguntar a Jev'}
         </Button>
       </div>
-      {error && <p className="text-destructive text-xs">{error}</p>}
+      {error && <p className="text-destructive px-1 text-xs">{error}</p>}
     </form>
   );
 }
