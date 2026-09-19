@@ -1,15 +1,18 @@
-import type { JevBetResponse } from './schemas';
+import { TypeSafeClient, choice } from '@typesafe-ai/sdk';
+
+import { oddsProvider } from '../odds/adapter';
+import type { Match } from '../odds/types';
+import type { JevBetResponse, RiskProfile } from './schemas';
 
 /**
- * Configuracion del SDK de Jev (TypeSafe AI / System One).
+ * Cliente real de Jev (TypeSafe AI / System One).
+ * https://docs.typesafe.ai/sdk/javascript
  *
- * En produccion, reemplaza este stub por el cliente oficial:
- *   import { Jev } from '@jev-ai/sdk';
- *   export const jevClient = new Jev({ apiKey: process.env.JEV_API_KEY });
- *
- * El cliente real expone `jevClient.evaluate({ prompt, schema })`, que
- * invoca el motor System One y valida la respuesta contra un esquema Zod
- * en menos de 100ms.
+ * Se activa cuando TYPESAFE_API_KEY esta configurada. `evaluate()` usa
+ * una pregunta `choice` para clasificar el perfil de riesgo pedido en el
+ * prompt, y arma el betslip cruzando esa clasificacion con las cuotas
+ * reales de lib/odds/adapter.ts (Jev no genera listas arbitrarias; solo
+ * responde preguntas estructuradas sobre un estado dado).
  */
 export interface JevEvaluateParams {
   prompt: string;
@@ -33,8 +36,11 @@ export interface RiskScoreResult {
 }
 
 /**
- * Motor de evaluacion de Juego Responsable basado en el primitivo `Score`
- * de Jev. Detecta patrones de apuesta compulsivos o de alto riesgo.
+ * Motor de evaluacion de Juego Responsable inspirado en el primitivo
+ * `Score` de Jev (rubrica ordenada). Se implementa como heuristica local
+ * en vez de una llamada a la API porque es una funcion de seguridad que
+ * debe responder siempre, incluso sin credenciales o si el servicio esta
+ * caido.
  */
 function scoreResponsibleGambling(input: RiskEvaluationInput): RiskScoreResult {
   const { promptsLastHour, totalStakeLastHour, consecutiveLosses } = input;
@@ -56,11 +62,78 @@ function scoreResponsibleGambling(input: RiskEvaluationInput): RiskScoreResult {
   };
 }
 
+const RISK_ODDS_RANGE: Record<RiskProfile, [number, number]> = {
+  Bajo: [1, 1.9],
+  Medio: [1.9, 3],
+  Alto: [3, Infinity],
+};
+
+function getTypeSafeClient(): TypeSafeClient | null {
+  if (!process.env.TYPESAFE_API_KEY) return null;
+  return new TypeSafeClient();
+}
+
+async function classifyRiskProfile(
+  client: TypeSafeClient,
+  prompt: string
+): Promise<{ riskProfile: RiskProfile; confidence: number }> {
+  const { answers } = await client.systemOne({
+    state: { prompt },
+    questions: {
+      riskProfile: choice('Que nivel de riesgo de apuesta pide este mensaje del usuario?', {
+        Bajo: 'Prefiere favoritos claros y cuotas bajas; poco riesgo.',
+        Medio: 'Acepta cuotas moderadas; riesgo intermedio.',
+        Alto: 'Busca cuotas altas o resultados sorpresa; riesgo alto.',
+      }),
+    },
+  });
+
+  return {
+    riskProfile: answers.riskProfile.choice as RiskProfile,
+    confidence: answers.riskProfile.confidence,
+  };
+}
+
+function pickMatchesForRisk(matches: Match[], riskProfile: RiskProfile, count = 2) {
+  const [min, max] = RISK_ODDS_RANGE[riskProfile];
+
+  return matches
+    .filter((match) => !match.isLive)
+    .map((match) => ({
+      match,
+      favorite: match.market1x2.reduce((a, b) => (a.odds < b.odds ? a : b)),
+    }))
+    .filter(({ favorite }) => favorite.odds >= min && favorite.odds < max)
+    .sort((a, b) => a.favorite.odds - b.favorite.odds)
+    .slice(0, count)
+    .map(({ match, favorite }) => ({
+      matchId: match.id,
+      matchName: `${match.homeTeam} vs ${match.awayTeam}`,
+      selection:
+        favorite.label === '1' ? match.homeTeam : favorite.label === '2' ? match.awayTeam : 'Empate',
+      market: 'Resultado Final (1X2)',
+      odds: favorite.odds,
+    }));
+}
+
 export const jevClient: JevClient = {
-  async evaluate() {
-    throw new Error(
-      'jevClient.evaluate no esta implementado. Usa la simulacion en app/api/jev/route.ts o conecta el SDK oficial de Jev.'
-    );
+  async evaluate({ prompt }) {
+    const client = getTypeSafeClient();
+    if (!client) {
+      throw new Error('TYPESAFE_API_KEY no esta configurada');
+    }
+
+    const [{ riskProfile, confidence }, matches] = await Promise.all([
+      classifyRiskProfile(client, prompt),
+      oddsProvider.getMatches(),
+    ]);
+
+    return {
+      queryIntent: prompt,
+      riskProfile,
+      confidenceScore: Math.round(confidence * 100),
+      suggestedBets: pickMatchesForRisk(matches, riskProfile),
+    };
   },
   async score(input) {
     return scoreResponsibleGambling(input);
