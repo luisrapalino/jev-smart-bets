@@ -75,31 +75,32 @@ export function BetslipDrawer() {
             exit={{ y: 80, opacity: 0 }}
             onClick={() => toggleOpen()}
             className={cn(
-              'bg-primary text-primary-foreground fixed inset-x-4 bottom-4 z-40 flex items-center justify-between rounded-xl px-4 py-3 shadow-lg sm:inset-x-auto sm:right-6 sm:w-80'
+              'bg-bulb text-primary-foreground fixed inset-x-4 bottom-4 z-40 flex items-center justify-between rounded-md px-4 py-3 sm:inset-x-auto sm:right-6 sm:w-80'
             )}
           >
             <span className="text-sm font-medium">
-              {selections.length} selecciones &middot; {formatOdds(totalOdds)}
+              {selections.length} en el boleto a{' '}
+              <span className="price font-bold">{formatOdds(totalOdds)}</span>
             </span>
-            <span className="text-sm font-semibold">{formatCurrency(potentialPayout)}</span>
+            <span className="price text-sm font-bold">{formatCurrency(potentialPayout)}</span>
           </motion.button>
         )}
       </AnimatePresence>
 
       <Drawer open={isOpen} onOpenChange={toggleOpen}>
         <DrawerContent>
-          <DrawerHeader className="flex-row items-center justify-between">
-            <DrawerTitle>Boleto de Apuestas</DrawerTitle>
+          <DrawerHeader className="mx-auto w-full max-w-2xl flex-row items-center justify-between">
+            <DrawerTitle className="board-condensed">Tu boleto</DrawerTitle>
             <DrawerClose asChild>
-              <Button variant="ghost" size="icon">
-                <X className="size-4" />
+              <Button variant="ghost" size="icon" className="size-8" aria-label="Cerrar boleto">
+                <X className="size-4" strokeWidth={1.5} />
               </Button>
             </DrawerClose>
           </DrawerHeader>
 
           {riskWarning && (
-            <div className="border-amber-500/50 bg-amber-500/10 mx-4 mb-2 flex items-start gap-2 rounded-md border px-3 py-2 text-xs text-amber-600">
-              <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+            <div className="border-bulb/40 text-bulb mx-4 mb-2 flex items-start gap-2 rounded-sm border px-3 py-2 text-xs">
+              <AlertTriangle className="mt-0.5 size-4 shrink-0" strokeWidth={1.5} />
               <div className="flex-1">
                 <p className="font-medium">Juego Responsable</p>
                 <p>{riskWarning}</p>
@@ -115,7 +116,7 @@ export function BetslipDrawer() {
             </div>
           )}
 
-          <div className="flex max-h-[45vh] flex-col gap-2 overflow-y-auto px-4">
+          <div className="mx-auto flex max-h-[45vh] w-full max-w-2xl flex-col gap-2 overflow-y-auto px-4">
             {selections.length === 0 ? (
               <p className="text-muted-foreground py-6 text-center text-sm">
                 Selecciona cuotas del feed o pidele una combinada a Jev.
@@ -124,21 +125,29 @@ export function BetslipDrawer() {
               selections.map((s) => (
                 <div
                   key={s.id}
-                  className="flex items-center justify-between gap-2 rounded-md border px-3 py-2"
+                  className="border-rule flex items-center justify-between gap-2 rounded-sm border px-3 py-2"
                 >
                   <div className="flex items-center gap-2 overflow-hidden">
                     <TeamBadge name={s.selection} size="sm" />
                     <div className="overflow-hidden">
-                      <p className="truncate text-sm font-medium">{s.matchName}</p>
-                      <p className="text-muted-foreground truncate text-xs">
-                        {s.market} &middot; {s.selection}
+                      <p className="truncate text-sm">{s.matchName}</p>
+                      <p className="text-chalk-dim truncate text-xs">
+                        {s.market}, {s.selection}
                       </p>
                     </div>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
-                    <span className="text-sm font-semibold">{formatOdds(s.odds)}</span>
-                    <Button variant="ghost" size="icon" onClick={() => removeSelection(s.id)}>
-                      <Trash2 className="text-destructive size-4" />
+                    <span className="price text-bulb text-sm font-bold">
+                      {formatOdds(s.odds)}
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-8 transition-[scale,color] duration-150 ease-out active:scale-[0.96]"
+                      onClick={() => removeSelection(s.id)}
+                      aria-label={`Quitar ${s.selection}`}
+                    >
+                      <Trash2 className="text-chalk-dim size-4" strokeWidth={1.5} />
                     </Button>
                   </div>
                 </div>
@@ -146,27 +155,30 @@ export function BetslipDrawer() {
             )}
           </div>
 
-          <DrawerFooter>
+          <DrawerFooter className="mx-auto w-full max-w-2xl">
             <div className="flex items-center justify-between gap-3">
-              <label className="flex flex-1 items-center gap-2 text-sm">
+              <label className="flex items-center gap-2 text-sm">
                 Stake
                 <Input
                   type="number"
                   min={1}
                   value={stake}
                   onChange={(e) => setStake(Number(e.target.value) || 0)}
+                  className="price w-24"
                 />
               </label>
               <div className="text-right">
-                <p className="text-muted-foreground text-xs">Cuota total {formatOdds(totalOdds)}</p>
+                <p className="text-chalk-dim price text-xs">
+                  Cuota total {formatOdds(totalOdds)}
+                </p>
                 <PopNumber
                   value={formatCurrency(potentialPayout)}
-                  className="text-sm font-semibold"
+                  className="price text-bulb text-base font-bold"
                 />
               </div>
             </div>
             <div className="flex items-center gap-2 text-sm">
-              <span className="text-muted-foreground">Operador</span>
+              <span className="text-chalk-dim">Operador</span>
               <div className="flex flex-1 gap-1">
                 {AFFILIATE_OPERATORS.map((op) => (
                   <button
@@ -174,10 +186,10 @@ export function BetslipDrawer() {
                     type="button"
                     onClick={() => setOperatorId(op.id)}
                     className={cn(
-                      'flex-1 rounded-md border px-2 py-1.5 text-xs font-medium transition-colors',
+                      'flex-1 rounded-sm border px-2 py-1.5 text-xs font-medium transition-[scale,background-color,color,border-color] duration-150 ease-out active:scale-[0.96]',
                       operatorId === op.id
-                        ? 'border-primary bg-primary/10 text-primary'
-                        : 'text-muted-foreground hover:bg-accent'
+                        ? 'border-bulb text-bulb'
+                        : 'border-rule text-chalk-dim hover:bg-accent'
                     )}
                   >
                     {op.name}
@@ -186,23 +198,26 @@ export function BetslipDrawer() {
               </div>
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" className="flex-1" onClick={clearSlip}>
+              <Button
+                variant="outline"
+                className="flex-1 transition-[scale,background-color] duration-150 ease-out active:scale-[0.96]"
+                onClick={clearSlip}
+              >
                 Limpiar
               </Button>
               <Button
-                className="flex-1"
+                className="flex-1 transition-[scale,background-color] duration-150 ease-out active:scale-[0.96]"
                 disabled={selections.length === 0 || isConfirming}
                 onClick={handleConfirm}
               >
-                {isConfirming ? 'Confirmando...' : 'Confirmar Apuesta'}
+                {isConfirming ? 'Confirmando' : 'Confirmar apuesta'}
               </Button>
             </div>
             {confirmError && (
               <p className="text-destructive text-center text-xs">{confirmError}</p>
             )}
-            <p className="text-muted-foreground text-center text-[11px]">
-              Al confirmar seras redirigido al operador afiliado para completar tu apuesta con
-              dinero real.
+            <p className="text-chalk-dim text-center text-[11px]">
+              Al confirmar te llevamos al operador para completar la apuesta con dinero real.
             </p>
           </DrawerFooter>
         </DrawerContent>

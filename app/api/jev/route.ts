@@ -39,6 +39,10 @@ async function getJevResponse(prompt: string): Promise<{ data: JevBetResponse; e
   }
 }
 
+function elapsedMs(startedAt: number): number {
+  return Math.round(performance.now() - startedAt);
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -49,7 +53,12 @@ export async function POST(req: Request) {
     }
 
     const { prompt } = parsedRequest.data;
+
+    // Medido de verdad: la latencia del motor es el argumento central
+    // del producto, no un numero decorativo.
+    const startedAt = performance.now();
     const { data: validatedData, engine } = await getJevResponse(prompt);
+    const latencyMs = elapsedMs(startedAt);
 
     await db.insert(userPrompts).values({
       promptText: validatedData.queryIntent,
@@ -60,7 +69,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       success: true,
       data: validatedData,
-      meta: { engine },
+      meta: { engine, latencyMs },
     });
   } catch {
     return NextResponse.json({ error: 'Error procesando solicitud en Jev' }, { status: 500 });

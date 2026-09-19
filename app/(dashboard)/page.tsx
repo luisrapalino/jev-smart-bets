@@ -11,27 +11,34 @@ import type { JevBetResponse } from '@/lib/jev/schemas';
 export default function DashboardPage() {
   const [jevResult, setJevResult] = useState<JevBetResponse | null>(null);
   const [jevLoading, setJevLoading] = useState(false);
+  const [jevLatency, setJevLatency] = useState<number | undefined>(undefined);
 
-  function handleJevResult(result: JevBetResponse | null, loading: boolean) {
+  function handleJevResult(
+    result: JevBetResponse | null,
+    loading: boolean,
+    latencyMs?: number
+  ) {
     setJevLoading(loading);
-    if (!loading) setJevResult(result);
+    if (!loading) {
+      setJevResult(result);
+      setJevLatency(latencyMs);
+    }
   }
 
   return (
-    <div className="mx-auto flex max-w-5xl flex-col gap-6 pb-24">
-      <div className="-mt-9">
+    <div className="mx-auto max-w-2xl pb-24">
+      <div className="flex flex-col gap-3 px-4 py-4">
         <AiPromptBar onResult={handleJevResult} />
+        {(jevLoading || jevResult) && (
+          <AiSuggestionsFeed
+            result={jevResult}
+            isLoading={jevLoading}
+            latencyMs={jevLatency}
+          />
+        )}
       </div>
 
-      {(jevLoading || jevResult) && (
-        <AiSuggestionsFeed result={jevResult} isLoading={jevLoading} />
-      )}
-
-      <div>
-        <h2 className="mb-3 text-base font-semibold">Partidos en vivo y proximos</h2>
-        <MatchFeed />
-      </div>
-
+      <MatchFeed />
       <BetslipDrawer />
     </div>
   );

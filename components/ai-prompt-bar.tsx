@@ -12,7 +12,7 @@ const EXAMPLE_PROMPT = 'Combinada de bajo riesgo para los partidos de Champions 
 export function AiPromptBar({
   onResult,
 }: {
-  onResult: (result: JevBetResponse | null, loading: boolean) => void;
+  onResult: (result: JevBetResponse | null, loading: boolean, latencyMs?: number) => void;
 }) {
   const [prompt, setPrompt] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -40,7 +40,7 @@ export function AiPromptBar({
       }
 
       const parsed = JevBetResponseSchema.parse(json.data);
-      onResult(parsed, false);
+      onResult(parsed, false, json.meta?.latencyMs);
     } catch {
       setError('No se pudo interpretar tu solicitud. Intenta de nuevo.');
       onResult(null, false);
@@ -51,19 +51,26 @@ export function AiPromptBar({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-1.5">
-      <div className="border-border bg-card flex flex-col gap-2 rounded-2xl border p-2 shadow-lg sm:flex-row sm:items-center">
+      <div className="border-rule flex flex-col gap-2 rounded-md border p-1.5 sm:flex-row sm:items-center">
         <div className="relative flex-1">
-          <Sparkles className="text-primary absolute top-1/2 left-3 size-4 -translate-y-1/2" />
+          <Sparkles
+            className="text-bulb absolute top-1/2 left-3 size-4 -translate-y-1/2"
+            strokeWidth={1.5}
+          />
           <Input
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             placeholder={EXAMPLE_PROMPT}
-            className="h-11 border-none pl-9 shadow-none focus-visible:ring-0"
+            className="h-10 border-none pl-9 shadow-none focus-visible:ring-0"
             disabled={isLoading}
           />
         </div>
-        <Button type="submit" size="lg" className="h-11" disabled={isLoading || !prompt.trim()}>
-          {isLoading ? 'Pensando...' : 'Preguntar a Jev'}
+        <Button
+          type="submit"
+          className="h-10 transition-[scale,background-color] duration-150 ease-out active:scale-[0.96]"
+          disabled={isLoading || !prompt.trim()}
+        >
+          {isLoading ? 'Consultando' : 'Preguntar a Jev'}
         </Button>
       </div>
       {error && <p className="text-destructive px-1 text-xs">{error}</p>}

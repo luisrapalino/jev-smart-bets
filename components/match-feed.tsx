@@ -1,12 +1,9 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { AlertCircle } from 'lucide-react';
 
-import { MatchCard } from '@/components/match-card';
-import { getLeagueMeta } from '@/lib/ui/league-meta';
-import { cn } from '@/lib/utils';
+import { MatchRow } from '@/components/match-row';
 import type { Match } from '@/lib/odds/types';
 
 async function fetchMatches(): Promise<Match[]> {
@@ -26,30 +23,22 @@ function groupByLeague(matches: Match[]): [string, Match[]][] {
   return Array.from(groups.entries());
 }
 
-function MatchCardSkeleton() {
+function RowSkeleton() {
   return (
-    <div className="border-border flex flex-col gap-3 rounded-xl border p-4">
-      <div className="bg-muted h-3 w-16 animate-pulse rounded" />
-      <div className="flex items-center gap-2">
-        <div className="bg-muted size-9 animate-pulse rounded-full" />
-        <div className="bg-muted h-4 w-24 animate-pulse rounded" />
+    <div className="border-rule flex items-center gap-3 border-b px-4 py-2.5">
+      <div className="bg-muted h-3 w-10 shrink-0 animate-pulse rounded-sm" />
+      <div className="flex flex-1 flex-col gap-2">
+        <div className="bg-muted h-3.5 w-32 animate-pulse rounded-sm" />
+        <div className="bg-muted h-3.5 w-24 animate-pulse rounded-sm" />
       </div>
-      <div className="flex items-center gap-2">
-        <div className="bg-muted size-9 animate-pulse rounded-full" />
-        <div className="bg-muted h-4 w-24 animate-pulse rounded" />
-      </div>
-      <div className="grid grid-cols-3 gap-2 pt-1">
-        <div className="bg-muted h-12 animate-pulse rounded-md" />
-        <div className="bg-muted h-12 animate-pulse rounded-md" />
-        <div className="bg-muted h-12 animate-pulse rounded-md" />
+      <div className="flex shrink-0 gap-1">
+        <div className="bg-muted h-10 w-14 animate-pulse rounded-sm sm:w-16" />
+        <div className="bg-muted h-10 w-14 animate-pulse rounded-sm sm:w-16" />
+        <div className="bg-muted h-10 w-14 animate-pulse rounded-sm sm:w-16" />
       </div>
     </div>
   );
 }
-
-// Tope del escalonado: con muchas tarjetas por liga, un delay lineal
-// haria esperar demasiado a las ultimas.
-const MAX_STAGGER_STEPS = 8;
 
 export function MatchFeed() {
   const { data, isLoading, isError } = useQuery({
@@ -58,27 +47,11 @@ export function MatchFeed() {
     refetchInterval: 15_000,
   });
 
-  // La entrada escalonada se juega una sola vez, en la primera carga: el
-  // refetch cada 15s no debe volver a animar todo el feed.
-  const [revealed, setRevealed] = useState(false);
-  const hasData = Boolean(data);
-  const frame = useRef<number>(undefined);
-
-  useEffect(() => {
-    if (!hasData || revealed) return;
-    // Un frame de espera deja pintar el estado inicial (oculto) antes de
-    // aplicar .is-shown, que es lo que dispara la transicion.
-    frame.current = requestAnimationFrame(() => setRevealed(true));
-    return () => {
-      if (frame.current !== undefined) cancelAnimationFrame(frame.current);
-    };
-  }, [hasData, revealed]);
-
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      <div>
         {Array.from({ length: 6 }).map((_, i) => (
-          <MatchCardSkeleton key={i} />
+          <RowSkeleton key={i} />
         ))}
       </div>
     );
@@ -86,56 +59,37 @@ export function MatchFeed() {
 
   if (isError || !data) {
     return (
-      <div className="border-destructive/30 bg-destructive/5 text-destructive flex items-center gap-2 rounded-lg border px-4 py-3 text-sm">
-        <AlertCircle className="size-4 shrink-0" />
-        Error al cargar el feed de partidos. Intenta de nuevo.
+      <div className="border-destructive/40 text-destructive mx-4 flex items-center gap-2 rounded-sm border px-4 py-3 text-sm">
+        <AlertCircle className="size-4 shrink-0" strokeWidth={1.5} />
+        No se pudo cargar el tablero. Intenta de nuevo.
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      {groupByLeague(data).map(([league, matches]) => {
-        const { icon: Icon, gradient } = getLeagueMeta(league);
-
-        return (
-          <div key={league} className="flex flex-col gap-3">
-            <div className="flex items-center gap-2">
-              <div
-                className={cn(
-                  'flex size-7 items-center justify-center rounded-md bg-linear-to-br text-white',
-                  gradient
-                )}
-              >
-                <Icon className="size-4" />
-              </div>
-              <h3 className="text-sm font-semibold">{league}</h3>
-              <span className="text-muted-foreground text-xs">{matches.length}</span>
-            </div>
-            <div
-              className={cn(
-                't-stagger grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3',
-                revealed && 'is-shown'
-              )}
-            >
-              {matches.map((match, i) => (
-                <div
-                  key={match.id}
-                  className="t-stagger-line"
-                  style={{
-                    transitionDelay: `calc(var(--stagger-stagger) * ${Math.min(
-                      i,
-                      MAX_STAGGER_STEPS
-                    )})`,
-                  }}
-                >
-                  <MatchCard match={match} />
-                </div>
+    <div>
+      {groupByLeague(data).map(([league, matches]) => (
+        <section key={league}>
+          {/* Los rotulos 1/X/2 van una sola vez, como cabecera de columna:
+              repetirlos en cada celda es ruido, y ningun tablero lo hace. */}
+          <div className="board-condensed border-rule bg-board-raised text-chalk-dim sticky top-10.25 z-20 flex items-center gap-3 border-y px-4 py-1.5 text-xs">
+            <h3 className="flex-1 font-semibold tracking-wide">
+              {league}
+              <span className="price ml-2 font-normal opacity-60">{matches.length}</span>
+            </h3>
+            <div className="flex shrink-0 gap-1" aria-hidden="true">
+              {['1', 'X', '2'].map((label) => (
+                <span key={label} className="w-14 text-center sm:w-16">
+                  {label}
+                </span>
               ))}
             </div>
           </div>
-        );
-      })}
+          {matches.map((match) => (
+            <MatchRow key={match.id} match={match} />
+          ))}
+        </section>
+      ))}
     </div>
   );
 }
