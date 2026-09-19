@@ -52,7 +52,7 @@ export function MatchCard({ match }: { match: Match }) {
         </div>
       </CardHeader>
       <CardContent>
-        {match.isLive && (
+        {match.isLive && match.homeScore !== undefined && match.awayScore !== undefined && (
           <p className="mb-2 text-lg font-semibold">
             {match.homeScore} - {match.awayScore}
           </p>
