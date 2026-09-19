@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { count, gte, sum } from 'drizzle-orm';
+import { count, desc, gte, ne, sum } from 'drizzle-orm';
 import { z } from 'zod';
 
 import { db } from '@/lib/db';
@@ -51,8 +51,22 @@ async function evaluateResponsibleGamblingRisk() {
   return jevClient.score({
     promptsLastHour: promptsRow?.value ?? 0,
     totalStakeLastHour: Number(stakeRow?.value ?? 0),
-    // La liquidacion de resultados (WON/LOST) no esta implementada todavia,
-    // por lo que las rachas de perdidas consecutivas no se pueden calcular aun.
-    consecutiveLosses: 0,
+    consecutiveLosses: await countConsecutiveLosses(),
   });
+}
+
+async function countConsecutiveLosses(): Promise<number> {
+  const recentSettled = await db
+    .select({ status: betHistory.status })
+    .from(betHistory)
+    .where(ne(betHistory.status, 'PENDING'))
+    .orderBy(desc(betHistory.createdAt))
+    .limit(20);
+
+  let streak = 0;
+  for (const bet of recentSettled) {
+    if (bet.status !== 'LOST') break;
+    streak += 1;
+  }
+  return streak;
 }
