@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 
-import { betsRepository } from '@/lib/db/repository';
+import { betsFor } from '@/lib/db/repository';
+import { getOrCreateSessionId } from '@/lib/session';
 import { jevClient } from '@/lib/jev/client';
 import { JevBetResponseSchema, JevPromptRequestSchema, type JevBetResponse } from '@/lib/jev/schemas';
 
@@ -59,7 +60,8 @@ export async function POST(req: Request) {
     const { data: validatedData, engine } = await getJevResponse(prompt);
     const latencyMs = elapsedMs(startedAt);
 
-    await betsRepository.savePrompt({
+    const sessionId = await getOrCreateSessionId();
+    await betsFor(sessionId).savePrompt({
       promptText: validatedData.queryIntent,
       riskProfile: validatedData.riskProfile,
       confidenceScore: validatedData.confidenceScore,

@@ -33,6 +33,12 @@ Con `DATABASE_URL` configurada, crea las tablas con `pnpm db:push` (y explórala
 - Aplica un filtro de Juego Responsable sobre la actividad reciente.
 - Conecta de forma modular con casas de apuestas afiliadas.
 
+## Identidad: sin cuentas
+
+No hay registro ni login. Cada navegador recibe un identificador anónimo en una cookie `httpOnly` ([`lib/session.ts`](./lib/session.ts)), y el historial y el filtro de Juego Responsable se calculan **contra esa sesión**, nunca contra el total del sitio.
+
+Es deliberado: la app no custodia dinero ni datos personales — eso vive en el operador — y exigir cuenta para mirar cuotas no tendría sentido. El costo es que se trata de identidad de dispositivo: al borrar cookies se empieza de cero. La columna `session_id` es la costura para enlazar cuentas reales si algún día hacen falta.
+
 ## Qué NO hace
 
 - No custodia ni procesa dinero: la apuesta se completa en el sitio del operador.

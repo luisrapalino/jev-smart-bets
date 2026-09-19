@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
-import { betsRepository } from '@/lib/db/repository';
+import { betsFor } from '@/lib/db/repository';
+import { getOrCreateSessionId } from '@/lib/session';
 
 const SettleBetSchema = z.object({
   status: z.enum(['WON', 'LOST']),
@@ -17,7 +18,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       return NextResponse.json({ error: 'Estado invalido' }, { status: 400 });
     }
 
-    const bet = await betsRepository.settleBet(id, parsed.data.status);
+    // Acotado a la sesion: una apuesta de otro dispositivo no existe aqui.
+    const sessionId = await getOrCreateSessionId();
+    const bet = await betsFor(sessionId).settleBet(id, parsed.data.status);
 
     if (!bet) {
       return NextResponse.json({ error: 'Apuesta no encontrada' }, { status: 404 });
