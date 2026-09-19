@@ -1,9 +1,7 @@
 import { NextResponse } from 'next/server';
-import { count, desc, gte, ne, sum } from 'drizzle-orm';
 import { z } from 'zod';
 
-import { db } from '@/lib/db';
-import { betHistory, userPrompts } from '@/lib/db/schema';
+import { betsRepository } from '@/lib/db/repository';
 import { AFFILIATE_OPERATORS, buildAffiliateUrl } from '@/lib/affiliates/operators';
 import { jevClient } from '@/lib/jev/client';
 
@@ -25,7 +23,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Datos de apuesta invalidos' }, { status: 400 });
     }
 
-    const [bet] = await db.insert(betHistory).values(parsed.data).returning();
+    const bet = await betsRepository.saveBet(parsed.data);
     const redirectUrl = buildAffiliateUrl(parsed.data.operatorId);
     const riskCheck = await evaluateResponsibleGamblingRisk();
 
@@ -38,35 +36,17 @@ export async function POST(req: Request) {
 async function evaluateResponsibleGamblingRisk() {
   const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
 
-  const [promptsRow] = await db
-    .select({ value: count() })
-    .from(userPrompts)
-    .where(gte(userPrompts.createdAt, oneHourAgo));
+  const [promptsLastHour, totalStakeLastHour, settled] = await Promise.all([
+    betsRepository.countPromptsSince(oneHourAgo),
+    betsRepository.sumStakeSince(oneHourAgo),
+    betsRepository.recentSettledStatuses(20),
+  ]);
 
-  const [stakeRow] = await db
-    .select({ value: sum(betHistory.stake) })
-    .from(betHistory)
-    .where(gte(betHistory.createdAt, oneHourAgo));
-
-  return jevClient.score({
-    promptsLastHour: promptsRow?.value ?? 0,
-    totalStakeLastHour: Number(stakeRow?.value ?? 0),
-    consecutiveLosses: await countConsecutiveLosses(),
-  });
-}
-
-async function countConsecutiveLosses(): Promise<number> {
-  const recentSettled = await db
-    .select({ status: betHistory.status })
-    .from(betHistory)
-    .where(ne(betHistory.status, 'PENDING'))
-    .orderBy(desc(betHistory.createdAt))
-    .limit(20);
-
-  let streak = 0;
-  for (const bet of recentSettled) {
-    if (bet.status !== 'LOST') break;
-    streak += 1;
+  let consecutiveLosses = 0;
+  for (const status of settled) {
+    if (status !== 'LOST') break;
+    consecutiveLosses += 1;
   }
-  return streak;
+
+  return jevClient.score({ promptsLastHour, totalStakeLastHour, consecutiveLosses });
 }

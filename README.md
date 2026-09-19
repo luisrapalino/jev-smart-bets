@@ -1,35 +1,64 @@
 # Jev Smart Bets
 
-Asistente y framework de apuestas deportivas *open-source* construido con **Next.js (App Router)** que utiliza **Jev (TypeSafe AI / System One)** para interpretar solicitudes en lenguaje natural (<100 ms) y estructurar boletos de apuestas interactivos.
+Tablero de apuestas deportivas *open-source* sobre **Next.js (App Router)** que usa **[Jev](https://typesafe.ai/blog/introducing-system-one-models-and-jev)**, el modelo de TypeSafe AI, para interpretar pedidos en lenguaje natural y armar boletos con cuotas reales.
 
-## Qué SÍ hace
-- Traduce lenguaje natural a selecciones de apuestas mediante Jev.
-- Genera boletos dinámicos (*betslips*) con cuotas compuestas y ganancias estimadas.
-- Muestra un feed de partidos en vivo con cuotas actualizadas.
-- Aplica un filtro de Juego Responsable basado en el primitivo `Score` de Jev.
-- Se integra de forma modular con casas de apuestas afiliadas.
+Es, hasta donde sabemos, una de las primeras implementaciones públicas del SDK de JavaScript de Jev. Si viniste por eso, la guía está en **[docs/integracion-jev.md](./docs/integracion-jev.md)**.
 
-## Qué NO hace
-- No custodia ni procesa dinero directamente.
-- No garantiza resultados ni predicciones.
-- No almacena datos bancarios sensibles.
-
-## Stack Tecnológico
-Next.js 15+, TypeScript estricto, shadcn/ui, Tailwind CSS v4, Framer Motion, Zustand, TanStack Query v5, Drizzle ORM, Neon PostgreSQL.
-
-## Empezar
+## Empezar (sin configurar nada)
 
 ```bash
 pnpm install
-cp .env.example .env.local # configura DATABASE_URL, ODDS_API_KEY, JEV_API_KEY
 pnpm dev
 ```
 
-Abre [http://localhost:3000](http://localhost:3000).
+Abre [http://localhost:3000](http://localhost:3000). **No hace falta ninguna credencial**: el proyecto arranca en modo demo con datos simulados y todas las funciones operativas, incluido el filtro de Juego Responsable. La cabecera muestra una etiqueta `demo` cuando estás en ese modo.
 
-## Estructura del Proyecto
+Para usar datos reales, copia `.env.example` a `.env.local` y completa lo que quieras activar. Cada integración degrada por separado: puedes tener cuotas reales sin base de datos, o al revés.
 
-Consulta [documento_de_especificaci_n_master.md](./documento_de_especificaci_n_master.md) para la especificación completa de arquitectura, esquemas y convenciones.
+| Variable | Qué activa | Sin ella |
+| --- | --- | --- |
+| `TYPESAFE_API_KEY` | Jev real ([early access](https://typesafe.ai)) | Respuesta simulada; `meta.engine` lo indica |
+| `ODDS_API_KEY` | Cuotas reales de [The Odds API](https://the-odds-api.com) | Partidos simulados |
+| `DATABASE_URL` | Persistencia en Postgres (Neon) | Historial en memoria del proceso |
+| `KV_REST_API_URL` / `KV_REST_API_TOKEN` | Caché de cuotas compartido (Upstash Redis) | Caché en memoria del proceso |
+| `AFFILIATE_ID_*` | Tu identificador de afiliado por operador | Enlaces a la home del operador, sin tag |
+
+Con `DATABASE_URL` configurada, crea las tablas con `pnpm db:push` (y explóralas con `pnpm db:studio`).
+
+## Qué SÍ hace
+
+- Traduce lenguaje natural a selecciones mediante Jev, y muestra la latencia real del motor.
+- Arma boletos con cuotas compuestas y ganancia estimada.
+- Tablero de partidos con cuotas en vivo y movimiento de precio (Champions League, Premier League, La Liga).
+- Aplica un filtro de Juego Responsable sobre la actividad reciente.
+- Conecta de forma modular con casas de apuestas afiliadas.
+
+## Qué NO hace
+
+- No custodia ni procesa dinero: la apuesta se completa en el sitio del operador.
+- No garantiza resultados ni predicciones.
+- No almacena datos bancarios.
+- No muestra escudos de los equipos: no existe una fuente gratuita con licencia para uso comercial, así que las insignias se generan a partir del nombre.
+
+## Stack
+
+Next.js 16, TypeScript estricto, Tailwind CSS v4, shadcn/ui, Zustand, TanStack Query v5, Framer Motion, Drizzle ORM, Neon PostgreSQL, Upstash Redis.
+
+## Arquitectura
+
+Cada dependencia externa vive detrás de un adaptador que elige implementación real o simulada según haya credencial, y cae a la simulada si la llamada falla:
+
+| Área | Adaptador | Implementaciones |
+| --- | --- | --- |
+| Motor de IA | [`lib/jev/client.ts`](./lib/jev/client.ts) | Jev real · simulada |
+| Cuotas | [`lib/odds/adapter.ts`](./lib/odds/adapter.ts) | [The Odds API](./lib/odds/the-odds-api.ts) · [simulada](./lib/odds/simulated.ts) |
+| Persistencia | [`lib/db/repository.ts`](./lib/db/repository.ts) | Postgres · memoria |
+| Caché | [`lib/cache/kv.ts`](./lib/cache/kv.ts) | Upstash Redis · memoria |
+| Afiliados | [`lib/affiliates/operators.ts`](./lib/affiliates/operators.ts) | Bet365 · Rushbet · Wplay |
+
+Agregar un proveedor de cuotas o un operador afiliado es implementar la interfaz correspondiente; no hay que tocar la UI.
+
+La especificación original está en [documento_de_especificaci_n_master.md](./documento_de_especificaci_n_master.md). El código se le adelantó en varios puntos (por ejemplo, la variable de Jev es `TYPESAFE_API_KEY`, no `JEV_API_KEY`); ante la duda, manda el código.
 
 ## Contribuir
 
@@ -38,3 +67,7 @@ Consulta [CONTRIBUTING.md](./CONTRIBUTING.md).
 ## Licencia
 
 MIT. Consulta [LICENSE](./LICENSE).
+
+## Juego responsable
+
+Este software es una herramienta de consulta, no un consejo de apuestas. Apostar implica riesgo de pérdida de dinero y puede generar adicción. Si sientes que perdiste el control, busca ayuda profesional.

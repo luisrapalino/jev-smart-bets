@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 
-import { db } from '@/lib/db';
-import { userPrompts } from '@/lib/db/schema';
+import { betsRepository } from '@/lib/db/repository';
 import { jevClient } from '@/lib/jev/client';
 import { JevBetResponseSchema, JevPromptRequestSchema, type JevBetResponse } from '@/lib/jev/schemas';
 
@@ -60,7 +59,7 @@ export async function POST(req: Request) {
     const { data: validatedData, engine } = await getJevResponse(prompt);
     const latencyMs = elapsedMs(startedAt);
 
-    await db.insert(userPrompts).values({
+    await betsRepository.savePrompt({
       promptText: validatedData.queryIntent,
       riskProfile: validatedData.riskProfile,
       confidenceScore: validatedData.confidenceScore,

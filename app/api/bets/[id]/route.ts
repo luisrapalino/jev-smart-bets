@@ -1,9 +1,7 @@
 import { NextResponse } from 'next/server';
-import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 
-import { db } from '@/lib/db';
-import { betHistory } from '@/lib/db/schema';
+import { betsRepository } from '@/lib/db/repository';
 
 const SettleBetSchema = z.object({
   status: z.enum(['WON', 'LOST']),
@@ -19,11 +17,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       return NextResponse.json({ error: 'Estado invalido' }, { status: 400 });
     }
 
-    const [bet] = await db
-      .update(betHistory)
-      .set({ status: parsed.data.status })
-      .where(eq(betHistory.id, id))
-      .returning();
+    const bet = await betsRepository.settleBet(id, parsed.data.status);
 
     if (!bet) {
       return NextResponse.json({ error: 'Apuesta no encontrada' }, { status: 404 });

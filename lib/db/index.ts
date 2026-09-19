@@ -3,10 +3,13 @@ import { drizzle } from 'drizzle-orm/neon-http';
 
 import * as schema from './schema';
 
-if (!process.env.DATABASE_URL) {
-  throw new Error('DATABASE_URL no esta definida. Copia .env.example a .env.local y configurala.');
-}
+/**
+ * La base de datos es opcional a proposito: sin `DATABASE_URL` el
+ * proyecto arranca igual en modo demo (ver lib/db/repository.ts), para
+ * que clonar el repo y correr `pnpm dev` alcance para probarlo todo.
+ */
+const url = process.env.DATABASE_URL;
 
-const sql = neon(process.env.DATABASE_URL);
+export const isDatabaseEnabled = Boolean(url);
 
-export const db = drizzle(sql, { schema });
+export const db = url ? drizzle(neon(url), { schema }) : null;
