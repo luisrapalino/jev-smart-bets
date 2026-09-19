@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Trash2, X } from 'lucide-react';
 
@@ -19,9 +20,33 @@ import { calculateParlayOdds, cn, formatCurrency, formatOdds } from '@/lib/utils
 export function BetslipDrawer() {
   const { selections, stake, isOpen, removeSelection, setStake, toggleOpen, clearSlip } =
     useBetslipStore();
+  const [isConfirming, setIsConfirming] = useState(false);
+  const [confirmError, setConfirmError] = useState<string | null>(null);
 
   const totalOdds = calculateParlayOdds(selections.map((s) => s.odds));
   const potentialPayout = stake * totalOdds;
+
+  async function handleConfirm() {
+    setIsConfirming(true);
+    setConfirmError(null);
+
+    try {
+      const res = await fetch('/api/bets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ totalOdds, stake, potentialPayout }),
+      });
+
+      if (!res.ok) throw new Error('Error al confirmar');
+
+      // TODO: redirigir al operador afiliado (ver seccion 2.2 de la spec).
+      clearSlip();
+    } catch {
+      setConfirmError('No se pudo confirmar la apuesta. Intenta de nuevo.');
+    } finally {
+      setIsConfirming(false);
+    }
+  }
 
   return (
     <>
@@ -103,10 +128,17 @@ export function BetslipDrawer() {
               <Button variant="outline" className="flex-1" onClick={clearSlip}>
                 Limpiar
               </Button>
-              <Button className="flex-1" disabled={selections.length === 0}>
-                Confirmar Apuesta
+              <Button
+                className="flex-1"
+                disabled={selections.length === 0 || isConfirming}
+                onClick={handleConfirm}
+              >
+                {isConfirming ? 'Confirmando...' : 'Confirmar Apuesta'}
               </Button>
             </div>
+            {confirmError && (
+              <p className="text-destructive text-center text-xs">{confirmError}</p>
+            )}
             <p className="text-muted-foreground text-center text-[11px]">
               Al confirmar seras redirigido al operador afiliado para completar tu apuesta con
               dinero real.

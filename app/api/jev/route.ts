@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 
+import { db } from '@/lib/db';
+import { userPrompts } from '@/lib/db/schema';
 import { JevBetResponseSchema, JevPromptRequestSchema } from '@/lib/jev/schemas';
 
 export async function POST(req: Request) {
@@ -40,6 +42,12 @@ export async function POST(req: Request) {
     };
 
     const validatedData = JevBetResponseSchema.parse(simulatedResponse);
+
+    await db.insert(userPrompts).values({
+      promptText: validatedData.queryIntent,
+      riskProfile: validatedData.riskProfile,
+      confidenceScore: validatedData.confidenceScore,
+    });
 
     return NextResponse.json({
       success: true,
