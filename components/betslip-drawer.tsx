@@ -43,7 +43,18 @@ export function BetslipDrawer() {
       const res = await fetch('/api/bets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ totalOdds, stake, potentialPayout, operatorId }),
+        body: JSON.stringify({
+          totalOdds,
+          stake,
+          potentialPayout,
+          operatorId,
+          selections: selections.map((s) => ({
+            matchName: s.matchName,
+            market: s.market,
+            selection: s.selection,
+            odds: s.odds,
+          })),
+        }),
       });
 
       const json = await res.json();

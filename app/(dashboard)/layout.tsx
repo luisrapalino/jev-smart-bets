@@ -1,3 +1,5 @@
+import { BoardNav } from '@/components/board-nav';
+
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   // Sin credenciales el proyecto sigue siendo usable, pero conviene decir
   // que lo es: los datos no se guardan y Jev responde simulado.
@@ -14,11 +16,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <div className="flex min-h-full flex-col">
       <header className="border-rule bg-board-raised sticky top-0 z-30 border-b">
-        <div className="mx-auto flex max-w-2xl items-baseline gap-3 px-4 py-2.5">
+        <div className="mx-auto flex max-w-2xl items-center gap-3 px-4 py-2.5">
           <span className="board-condensed text-bulb text-lg font-bold tracking-tight">
             JEV SMART BETS
           </span>
-          <span className="text-chalk-dim text-xs">Tablero en vivo</span>
+          <BoardNav />
           {(isDemo || jevSimulated) && (
             <span
               className="border-rule text-chalk-dim ml-auto rounded-sm border px-1.5 py-0.5 text-[10px]"

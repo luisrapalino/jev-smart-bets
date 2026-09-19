@@ -7,12 +7,29 @@ import { jevClient } from '@/lib/jev/client';
 
 const operatorIds = AFFILIATE_OPERATORS.map((op) => op.id) as [string, ...string[]];
 
+const SelectionSchema = z.object({
+  matchName: z.string(),
+  market: z.string(),
+  selection: z.string(),
+  odds: z.number().positive(),
+});
+
 const ConfirmBetSchema = z.object({
   totalOdds: z.number().positive(),
   stake: z.number().positive(),
   potentialPayout: z.number().positive(),
   operatorId: z.enum(operatorIds),
+  selections: z.array(SelectionSchema).min(1),
 });
+
+export async function GET() {
+  try {
+    const bets = await betsRepository.listBets(30);
+    return NextResponse.json({ success: true, data: bets });
+  } catch {
+    return NextResponse.json({ error: 'Error cargando el historial' }, { status: 500 });
+  }
+}
 
 export async function POST(req: Request) {
   try {

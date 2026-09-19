@@ -1,7 +1,7 @@
 import { count, desc, eq, gte, ne, sum } from 'drizzle-orm';
 
 import { db, isDatabaseEnabled } from './index';
-import { betHistory, userPrompts } from './schema';
+import { betHistory, userPrompts, type StoredSelection } from './schema';
 
 export type BetStatus = 'PENDING' | 'WON' | 'LOST';
 
@@ -12,6 +12,7 @@ export interface SavedBet {
   potentialPayout: number;
   status: string;
   operatorId: string | null;
+  selections: StoredSelection[] | null;
   createdAt: Date;
 }
 
@@ -26,6 +27,7 @@ export interface SaveBetInput {
   stake: number;
   potentialPayout: number;
   operatorId: string;
+  selections: StoredSelection[];
 }
 
 /**
@@ -42,6 +44,7 @@ export interface BetsRepository {
   countPromptsSince(since: Date): Promise<number>;
   sumStakeSince(since: Date): Promise<number>;
   recentSettledStatuses(limit: number): Promise<string[]>;
+  listBets(limit: number): Promise<SavedBet[]>;
 }
 
 const postgresRepository: BetsRepository = {
@@ -88,6 +91,10 @@ const postgresRepository: BetsRepository = {
       .limit(limit);
     return rows.map((row) => row.status);
   },
+
+  async listBets(limit) {
+    return db!.select().from(betHistory).orderBy(desc(betHistory.createdAt)).limit(limit);
+  },
 };
 
 // Modo demo: vive en el proceso, asi que se reinicia con el servidor.
@@ -129,13 +136,25 @@ const memoryRepository: BetsRepository = {
   },
 
   async recentSettledStatuses(limit) {
-    return bets
-      .filter((b) => b.status !== 'PENDING')
-      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+    return newestFirst(bets.filter((b) => b.status !== 'PENDING'))
       .slice(0, limit)
       .map((b) => b.status);
   },
+
+  async listBets(limit) {
+    return newestFirst(bets).slice(0, limit);
+  },
 };
+
+/**
+ * Dos apuestas seguidas pueden caer en el mismo milisegundo, y entonces
+ * `createdAt` no alcanza para ordenar. Como `bets` esta en orden de
+ * insercion, invertirlo antes del sort (que es estable) hace que el
+ * empate lo gane la ultima registrada.
+ */
+function newestFirst(list: SavedBet[]): SavedBet[] {
+  return [...list].reverse().sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+}
 
 export const betsRepository: BetsRepository = isDatabaseEnabled
   ? postgresRepository
