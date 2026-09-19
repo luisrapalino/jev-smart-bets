@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Trash2, X } from 'lucide-react';
+import { AlertTriangle, Trash2, X } from 'lucide-react';
 
 import {
   Drawer,
@@ -24,6 +24,7 @@ export function BetslipDrawer() {
   const [isConfirming, setIsConfirming] = useState(false);
   const [confirmError, setConfirmError] = useState<string | null>(null);
   const [operatorId, setOperatorId] = useState(AFFILIATE_OPERATORS[0].id);
+  const [riskWarning, setRiskWarning] = useState<string | null>(null);
 
   const totalOdds = calculateParlayOdds(selections.map((s) => s.odds));
   const potentialPayout = stake * totalOdds;
@@ -41,6 +42,10 @@ export function BetslipDrawer() {
 
       const json = await res.json();
       if (!res.ok) throw new Error('Error al confirmar');
+
+      if (json.riskCheck?.flagged) {
+        setRiskWarning(json.riskCheck.reason);
+      }
 
       clearSlip();
       window.open(json.redirectUrl, '_blank', 'noopener,noreferrer');
@@ -82,6 +87,24 @@ export function BetslipDrawer() {
               </Button>
             </DrawerClose>
           </DrawerHeader>
+
+          {riskWarning && (
+            <div className="border-amber-500/50 bg-amber-500/10 mx-4 mb-2 flex items-start gap-2 rounded-md border px-3 py-2 text-xs text-amber-600">
+              <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+              <div className="flex-1">
+                <p className="font-medium">Juego Responsable</p>
+                <p>{riskWarning}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setRiskWarning(null)}
+                aria-label="Cerrar aviso"
+                className="shrink-0"
+              >
+                <X className="size-3.5" />
+              </button>
+            </div>
+          )}
 
           <div className="flex max-h-[45vh] flex-col gap-2 overflow-y-auto px-4">
             {selections.length === 0 ? (
