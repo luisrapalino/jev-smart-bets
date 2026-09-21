@@ -76,7 +76,11 @@ export function MatchRow({ match }: { match: Match }) {
                   ? `${teamForLabel[sel.label]} a ${formatOdds(sel.odds)}, cuota de valor, ${sel.edgePct?.toFixed(1)}% sobre el precio justo estimado`
                   : `${teamForLabel[sel.label]} a ${formatOdds(sel.odds)}`
               }
-              title={hasValue ? `Valor: paga ${sel.edgePct?.toFixed(1)}% mas que la cuota justa estimada (cuota justa ~${sel.fairOdds?.toFixed(2)})` : undefined}
+              title={
+                hasValue
+                  ? `Valor: paga ${sel.edgePct?.toFixed(1)}% mas que la cuota justa estimada (cuota justa ~${sel.fairOdds?.toFixed(2)}). Referencia de mercado, no la cuota exacta del operador.`
+                  : undefined
+              }
               className={cn(
                 'board-condensed price relative flex w-14 items-center justify-center gap-0.5 rounded-sm py-2 text-base font-bold transition-[scale,background-color,color] duration-150 ease-out active:scale-[0.96] sm:w-16',
                 isSelected

@@ -75,7 +75,7 @@ export function AiSuggestionsFeed({
             <div className="flex shrink-0 items-center gap-2">
               {isValueBet(bet.edgePct) && (
                 <span
-                  title={`Valor: paga ${bet.edgePct!.toFixed(1)}% mas que la cuota justa estimada`}
+                  title={`Valor: paga ${bet.edgePct!.toFixed(1)}% mas que la cuota justa estimada. Referencia de mercado, no la cuota exacta del operador.`}
                   className="bg-price-up text-accent rounded-full px-1.5 py-0.5 text-[10px] leading-tight font-bold"
                 >
                   +{bet.edgePct!.toFixed(0)}%

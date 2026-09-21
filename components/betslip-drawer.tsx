@@ -275,7 +275,8 @@ export function BetslipDrawer() {
               <p className="text-destructive text-center text-xs">{confirmError}</p>
             )}
             <p className="text-chalk-dim text-center text-[11px]">
-              Al confirmar te llevamos al operador para completar la apuesta con dinero real.
+              Al confirmar te llevamos al operador para completar la apuesta con dinero real. La
+              cuota es una referencia de mercado — puede no coincidir con la que ofrece {operatorName}.
             </p>
           </DrawerFooter>
         </DrawerContent>
