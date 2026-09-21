@@ -2,6 +2,7 @@ import { TypeSafeClient, choice } from '@typesafe-ai/sdk';
 
 import { oddsProvider } from '../odds/adapter';
 import type { Match } from '../odds/types';
+import { isValueBet } from '../odds/value';
 import type { JevBetResponse, RiskProfile } from './schemas';
 
 /**
@@ -100,7 +101,7 @@ async function classifyRiskProfile(
 // matematicamente raro que las tres cuotas de un 1X2 esten ahi a la vez),
 // asi que se busca cualquier seleccion del partido -favorita o no- que
 // caiga en el rango de riesgo pedido.
-function pickMatchesForRisk(matches: Match[], riskProfile: RiskProfile, count = 2) {
+export function pickMatchesForRisk(matches: Match[], riskProfile: RiskProfile, count = 2) {
   const [min, max] = RISK_ODDS_RANGE[riskProfile];
 
   return matches
@@ -108,19 +109,35 @@ function pickMatchesForRisk(matches: Match[], riskProfile: RiskProfile, count = 
     .map((match) => {
       const inRange = match.market1x2.filter((o) => o.odds >= min && o.odds < max);
       if (inRange.length === 0) return null;
-      const pick = inRange.reduce((a, b) => (a.odds < b.odds ? a : b));
+      // Entre las que cumplen el riesgo pedido, se prefiere la de mejor
+      // valor detectado (lib/odds/value.ts) en vez de la mas barata sin
+      // mas: dentro del mismo perfil de riesgo, una con edge paga mas
+      // por probabilidad real similar. Sin dato de edge se cae a la
+      // cuota mas baja, la eleccion "segura" de antes.
+      const pick = inRange.reduce((best, candidate) => {
+        const bestEdge = best.edgePct ?? -Infinity;
+        const candidateEdge = candidate.edgePct ?? -Infinity;
+        if (candidateEdge !== bestEdge) return candidateEdge > bestEdge ? candidate : best;
+        return candidate.odds < best.odds ? candidate : best;
+      });
       return { match, pick };
     })
     .filter((entry): entry is { match: Match; pick: Match['market1x2'][number] } => entry !== null)
-    .sort((a, b) => a.pick.odds - b.pick.odds)
+    .sort((a, b) => {
+      const aIsValue = isValueBet(a.pick.edgePct);
+      const bIsValue = isValueBet(b.pick.edgePct);
+      if (aIsValue !== bIsValue) return aIsValue ? -1 : 1;
+      if (aIsValue) return (b.pick.edgePct ?? 0) - (a.pick.edgePct ?? 0);
+      return a.pick.odds - b.pick.odds;
+    })
     .slice(0, count)
-    .map(({ match, pick: favorite }) => ({
+    .map(({ match, pick }) => ({
       matchId: match.id,
       matchName: `${match.homeTeam} vs ${match.awayTeam}`,
-      selection:
-        favorite.label === '1' ? match.homeTeam : favorite.label === '2' ? match.awayTeam : 'Empate',
+      selection: pick.label === '1' ? match.homeTeam : pick.label === '2' ? match.awayTeam : 'Empate',
       market: 'Resultado Final (1X2)',
-      odds: favorite.odds,
+      odds: pick.odds,
+      edgePct: pick.edgePct,
     }));
 }
 

@@ -8,6 +8,7 @@ import { useBetslipStore } from '@/lib/store/use-betslip-store';
 import { TeamBadge } from '@/lib/ui/team-badge';
 import { PopNumber } from '@/lib/ui/pop-number';
 import { JevThinking } from '@/components/jev-thinking';
+import { isValueBet } from '@/lib/odds/value';
 import type { JevBetResponse } from '@/lib/jev/schemas';
 
 const riskColor: Record<JevBetResponse['riskProfile'], string> = {
@@ -72,6 +73,14 @@ export function AiSuggestionsFeed({
               </div>
             </div>
             <div className="flex shrink-0 items-center gap-2">
+              {isValueBet(bet.edgePct) && (
+                <span
+                  title={`Valor: paga ${bet.edgePct!.toFixed(1)}% mas que la cuota justa estimada`}
+                  className="bg-price-up text-accent rounded-full px-1.5 py-0.5 text-[10px] leading-tight font-bold"
+                >
+                  +{bet.edgePct!.toFixed(0)}%
+                </span>
+              )}
               <PopNumber value={formatOdds(bet.odds)} className="price text-bulb font-bold" />
               <Button
                 size="icon"

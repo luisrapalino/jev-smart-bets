@@ -9,6 +9,9 @@ export const JevSuggestedBetSchema = z.object({
   selection: z.string(),
   market: z.string(),
   odds: z.number(),
+  // Edge sobre la cuota justa estimada (ver lib/odds/value.ts). Ausente
+  // cuando no hay suficientes libros para calcularla con confianza.
+  edgePct: z.number().optional(),
 });
 export type JevSuggestedBet = z.infer<typeof JevSuggestedBetSchema>;
 
