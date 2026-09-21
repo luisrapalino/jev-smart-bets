@@ -9,8 +9,10 @@ import { SIMULATED_MATCHES } from './simulated';
  * cae de vuelta a datos simulados para que la app siga siendo utilizable
  * en desarrollo sin credenciales.
  *
- * Los resultados se cachean en app/api/odds/route.ts (memoria de corta
- * duracion hoy; reemplazar por Vercel KV / Redis en produccion).
+ * Los resultados se cachean en app/api/odds/route.ts (memoria del
+ * proceso hoy; configurar KV_REST_API_URL/TOKEN -ver lib/cache/kv.ts-
+ * antes de desplegar, o el cache no se comparte entre instancias
+ * serverless y el cupo gratuito de The Odds API se agota rapido).
  */
 export interface OddsProvider {
   getMatches(): Promise<Match[]>;
