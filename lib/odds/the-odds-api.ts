@@ -1,5 +1,15 @@
 import type { Match, OddsSelection } from './types';
 import type { OddsProvider } from './adapter';
+import { computeEdge, devigProbabilities, median } from './value';
+
+// Libro de referencia para estimar la probabilidad justa: Pinnacle es el
+// estandar de facto por su margen bajo y limites altos (sus lineas son
+// las mas dificiles de "vencer" en el mercado). Si no cotiza un partido,
+// se cae a la mediana de los libros disponibles.
+const REFERENCE_BOOKMAKER = 'pinnacle';
+// Con menos libros que esto, la mediana de respaldo no es confiable y no
+// se calcula edge (mejor no mostrar nada a mostrar un falso positivo).
+const MIN_BOOKS_FOR_FALLBACK_REFERENCE = 3;
 
 const API_BASE = 'https://api.the-odds-api.com/v4';
 
@@ -39,25 +49,88 @@ interface TheOddsApiEvent {
 // calcular la tendencia (sube/baja/estable) entre polls sucesivos.
 const previousHomeOdds = new Map<string, number>();
 
+interface Quote {
+  home: number;
+  draw: number;
+  away: number;
+}
+
+// La cuota mas alta entre ~20 libros a veces es un unico libro con una
+// linea vieja o mal cargada, sobre todo en mercados poco liquidos (un
+// visitante muy perdedor). Usar directamente ese maximo perseguiria
+// lineas que se corrigen o anulan antes de poder jugarlas. Se exige que
+// al menos otro libro corrobore un precio parecido: la segunda cuota mas
+// alta, no la primera.
+function representativePrice(prices: number[]): number {
+  const sorted = [...prices].sort((a, b) => b - a);
+  return sorted.length > 1 ? sorted[1] : sorted[0];
+}
+
 function toMarket1x2(
   event: TheOddsApiEvent,
   homeTeam: string,
   awayTeam: string
 ): OddsSelection[] | null {
-  const bookmaker = event.bookmakers[0];
-  const market = bookmaker?.markets.find((m) => m.key === 'h2h');
-  if (!market) return null;
+  const quotes: Quote[] = [];
+  let reference: Quote | undefined;
 
-  const home = market.outcomes.find((o) => o.name === homeTeam);
-  const away = market.outcomes.find((o) => o.name === awayTeam);
-  const draw = market.outcomes.find((o) => o.name === 'Draw');
+  for (const bookmaker of event.bookmakers) {
+    const market = bookmaker.markets.find((m) => m.key === 'h2h');
+    const home = market?.outcomes.find((o) => o.name === homeTeam)?.price;
+    const away = market?.outcomes.find((o) => o.name === awayTeam)?.price;
+    const draw = market?.outcomes.find((o) => o.name === 'Draw')?.price;
+    if (!home || !away || !draw) continue;
 
-  if (!home || !away || !draw) return null;
+    const quote = { home, draw, away };
+    quotes.push(quote);
+    if (bookmaker.key === REFERENCE_BOOKMAKER) reference = quote;
+  }
+
+  if (quotes.length === 0) return null;
+
+  // Mejor precio corroborado por resultado, comprado entre todos los
+  // libros del feed (no necesariamente del mismo libro para los tres).
+  const bestHome = representativePrice(quotes.map((q) => q.home));
+  const bestDraw = representativePrice(quotes.map((q) => q.draw));
+  const bestAway = representativePrice(quotes.map((q) => q.away));
+
+  // Con un solo libro no hay nada que "comprar": la mejor cuota es la
+  // unica cuota, y compararla contra su propia version de-vigueada
+  // siempre da edge negativo (asi es como se ve el margen de la casa).
+  if (quotes.length < 2) {
+    return [
+      { label: '1', odds: bestHome },
+      { label: 'X', odds: bestDraw },
+      { label: '2', odds: bestAway },
+    ];
+  }
+
+  if (!reference && quotes.length >= MIN_BOOKS_FOR_FALLBACK_REFERENCE) {
+    reference = {
+      home: median(quotes.map((q) => q.home)),
+      draw: median(quotes.map((q) => q.draw)),
+      away: median(quotes.map((q) => q.away)),
+    };
+  }
+
+  if (!reference) {
+    return [
+      { label: '1', odds: bestHome },
+      { label: 'X', odds: bestDraw },
+      { label: '2', odds: bestAway },
+    ];
+  }
+
+  const [fairHome, fairDraw, fairAway] = devigProbabilities([
+    reference.home,
+    reference.draw,
+    reference.away,
+  ]);
 
   return [
-    { label: '1', odds: home.price },
-    { label: 'X', odds: draw.price },
-    { label: '2', odds: away.price },
+    { label: '1', odds: bestHome, ...computeEdge(bestHome, fairHome) },
+    { label: 'X', odds: bestDraw, ...computeEdge(bestDraw, fairDraw) },
+    { label: '2', odds: bestAway, ...computeEdge(bestAway, fairAway) },
   ];
 }
 

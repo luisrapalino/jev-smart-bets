@@ -139,4 +139,110 @@ describe('adaptador de The Odds API', () => {
     const [segunda] = await theOddsApiProvider.getMatches();
     expect(segunda.trend).toBe('up');
   });
+
+  it('detecta valor cuando dos libros sueltos corroboran un precio mejor que Pinnacle', async () => {
+    const conValor = event({
+      bookmakers: [
+        {
+          key: 'pinnacle',
+          markets: [
+            {
+              key: 'h2h',
+              outcomes: [
+                { name: 'Arsenal', price: 1.29 },
+                { name: 'Lille', price: 11.75 },
+                { name: 'Draw', price: 5.5 },
+              ],
+            },
+          ],
+        },
+        {
+          key: 'libro_blando_a',
+          markets: [
+            {
+              key: 'h2h',
+              outcomes: [
+                { name: 'Arsenal', price: 1.25 },
+                { name: 'Lille', price: 16 },
+                { name: 'Draw', price: 5.2 },
+              ],
+            },
+          ],
+        },
+        {
+          // Corrobora el precio del visitante; sin este segundo libro no
+          // se confiaria en el 16 de arriba (podria ser una linea vieja).
+          key: 'libro_blando_b',
+          markets: [
+            {
+              key: 'h2h',
+              outcomes: [
+                { name: 'Arsenal', price: 1.26 },
+                { name: 'Lille', price: 15.5 },
+                { name: 'Draw', price: 5.1 },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    vi.stubGlobal('fetch', mockFetch([conValor]));
+
+    const [match] = await theOddsApiProvider.getMatches();
+    const away = match.market1x2.find((s) => s.label === '2');
+
+    // El maximo (16) se descarta por no tener corroboracion; se usa la
+    // segunda cuota mas alta (15.5), respaldada por dos libros.
+    expect(away?.odds).toBe(15.5);
+    expect(away?.edgePct).toBeGreaterThan(0);
+    expect(away?.fairOdds).toBeCloseTo(1 / (1 / 11.75 / (1 / 1.29 + 1 / 5.5 + 1 / 11.75)), 5);
+  });
+
+  it('no persigue el maximo si es un unico libro sin corroborar (linea potencialmente vieja)', async () => {
+    const outlier = event({
+      bookmakers: [
+        {
+          key: 'pinnacle',
+          markets: [
+            {
+              key: 'h2h',
+              outcomes: [
+                { name: 'Arsenal', price: 1.29 },
+                { name: 'Lille', price: 11.75 },
+                { name: 'Draw', price: 5.5 },
+              ],
+            },
+          ],
+        },
+        {
+          key: 'libro_desactualizado',
+          markets: [
+            {
+              key: 'h2h',
+              outcomes: [
+                { name: 'Arsenal', price: 1.25 },
+                { name: 'Lille', price: 60 },
+                { name: 'Draw', price: 5.2 },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    vi.stubGlobal('fetch', mockFetch([outlier]));
+
+    const [match] = await theOddsApiProvider.getMatches();
+    const away = match.market1x2.find((s) => s.label === '2');
+
+    // Solo hay 2 libros: el 60 no tiene con que corroborarse, se cae al
+    // precio de Pinnacle (el otro valor disponible).
+    expect(away?.odds).toBe(11.75);
+  });
+
+  it('no calcula edge con un solo libro: no hay nada que comprar', async () => {
+    vi.stubGlobal('fetch', mockFetch([event()]));
+
+    const [match] = await theOddsApiProvider.getMatches();
+    expect(match.market1x2.every((s) => s.edgePct === undefined)).toBe(true);
+  });
 });

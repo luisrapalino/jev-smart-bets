@@ -5,6 +5,7 @@ import { useBetslipStore } from '@/lib/store/use-betslip-store';
 import { TeamBadge } from '@/lib/ui/team-badge';
 import { PopNumber } from '@/lib/ui/pop-number';
 import type { Match } from '@/lib/odds/types';
+import { isValueBet } from '@/lib/odds/value';
 
 export function MatchRow({ match }: { match: Match }) {
   const selections = useBetslipStore((s) => s.selections);
@@ -53,6 +54,7 @@ export function MatchRow({ match }: { match: Match }) {
           // El proveedor entrega una sola tendencia por partido, calculada
           // sobre el precio local: solo esa celda puede marcarla.
           const movement = sel.label === '1' ? match.trend : 'stable';
+          const hasValue = isValueBet(sel.edgePct);
 
           return (
             <button
@@ -68,14 +70,28 @@ export function MatchRow({ match }: { match: Match }) {
                   odds: sel.odds,
                 })
               }
-              aria-label={`${teamForLabel[sel.label]} a ${formatOdds(sel.odds)}`}
+              aria-label={
+                hasValue
+                  ? `${teamForLabel[sel.label]} a ${formatOdds(sel.odds)}, cuota de valor, ${sel.edgePct?.toFixed(1)}% sobre el precio justo estimado`
+                  : `${teamForLabel[sel.label]} a ${formatOdds(sel.odds)}`
+              }
+              title={hasValue ? `Valor: paga ${sel.edgePct?.toFixed(1)}% mas que la cuota justa estimada (cuota justa ~${sel.fairOdds?.toFixed(2)})` : undefined}
               className={cn(
-                'board-condensed price flex w-14 items-center justify-center gap-0.5 rounded-sm py-2 text-base font-bold transition-[scale,background-color,color] duration-150 ease-out active:scale-[0.96] sm:w-16',
+                'board-condensed price relative flex w-14 items-center justify-center gap-0.5 rounded-sm py-2 text-base font-bold transition-[scale,background-color,color] duration-150 ease-out active:scale-[0.96] sm:w-16',
                 isSelected
                   ? 'bg-bulb text-primary-foreground'
-                  : 'text-bulb bg-accent hover:bg-[#2c261d]'
+                  : 'text-bulb bg-accent hover:bg-[#2c261d]',
+                hasValue && !isSelected && 'ring-price-up ring-1'
               )}
             >
+              {hasValue && (
+                <span
+                  aria-hidden="true"
+                  className="bg-price-up text-accent absolute -top-1.5 -right-1.5 rounded-full px-1 text-[8px] leading-tight font-bold"
+                >
+                  +{sel.edgePct!.toFixed(0)}%
+                </span>
+              )}
               <PopNumber value={formatOdds(sel.odds)} />
               {movement !== 'stable' && (
                 <span
