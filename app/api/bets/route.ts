@@ -45,9 +45,17 @@ export async function POST(req: Request) {
     const sessionId = await getOrCreateSessionId();
     const repository = betsFor(sessionId);
 
+    // El chequeo corre ANTES de guardar: un aviso que llega despues de
+    // que la apuesta ya se guardo y el usuario ya esta en el operador no
+    // protege a nadie, solo decora. Si ya esta en riesgo alto, la apuesta
+    // ni se registra ni se redirige.
+    const riskCheck = await evaluateResponsibleGamblingRisk(repository, parsed.data.stake);
+    if (riskCheck.flagged) {
+      return NextResponse.json({ success: false, blocked: true, riskCheck }, { status: 403 });
+    }
+
     const bet = await repository.saveBet(parsed.data);
     const redirectUrl = buildAffiliateUrl(parsed.data.operatorId);
-    const riskCheck = await evaluateResponsibleGamblingRisk(repository);
 
     return NextResponse.json({ success: true, data: bet, redirectUrl, riskCheck });
   } catch {
@@ -56,11 +64,14 @@ export async function POST(req: Request) {
 }
 
 // Se mide la actividad de ESTA sesion: un contador global marcaria a
-// cualquiera en cuanto el sitio tuviera trafico.
-async function evaluateResponsibleGamblingRisk(repository: BetsRepository) {
+// cualquiera en cuanto el sitio tuviera trafico. Corre antes de guardar,
+// asi que `pendingStake` sube el total con la apuesta que se esta por
+// confirmar: si no se sumara, una primera apuesta enorme nunca se
+// bloquearia (el historial previo estaria vacio).
+async function evaluateResponsibleGamblingRisk(repository: BetsRepository, pendingStake: number) {
   const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
 
-  const [promptsLastHour, totalStakeLastHour, settled] = await Promise.all([
+  const [promptsLastHour, stakeSoFar, settled] = await Promise.all([
     repository.countPromptsSince(oneHourAgo),
     repository.sumStakeSince(oneHourAgo),
     repository.recentSettledStatuses(20),
@@ -72,5 +83,9 @@ async function evaluateResponsibleGamblingRisk(repository: BetsRepository) {
     consecutiveLosses += 1;
   }
 
-  return jevClient.score({ promptsLastHour, totalStakeLastHour, consecutiveLosses });
+  return jevClient.score({
+    promptsLastHour,
+    totalStakeLastHour: stakeSoFar + pendingStake,
+    consecutiveLosses,
+  });
 }

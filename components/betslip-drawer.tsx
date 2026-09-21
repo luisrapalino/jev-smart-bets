@@ -28,6 +28,7 @@ export function BetslipDrawer() {
   const [confirmError, setConfirmError] = useState<string | null>(null);
   const [operatorId, setOperatorId] = useState(AFFILIATE_OPERATORS[0].id);
   const [riskWarning, setRiskWarning] = useState<string | null>(null);
+  const [blocked, setBlocked] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
 
   const totalOdds = calculateParlayOdds(selections.map((s) => s.odds));
@@ -38,6 +39,7 @@ export function BetslipDrawer() {
   async function handleConfirm() {
     setIsConfirming(true);
     setConfirmError(null);
+    setBlocked(false);
 
     try {
       const res = await fetch('/api/bets', {
@@ -58,12 +60,20 @@ export function BetslipDrawer() {
       });
 
       const json = await res.json();
-      if (!res.ok) throw new Error('Error al confirmar');
 
-      if (json.riskCheck?.flagged) {
+      // Bloqueado por Juego Responsable: la apuesta NO se guardo y no hay
+      // redirectUrl. El boleto se conserva tal cual para que el usuario
+      // pueda bajar el stake e intentar de nuevo, en vez de perder la
+      // seleccion.
+      if (res.status === 403 && json.blocked) {
         setRiskWarning(json.riskCheck.reason);
+        setBlocked(true);
+        return;
       }
 
+      if (!res.ok) throw new Error('Error al confirmar');
+
+      setRiskWarning(null);
       clearSlip();
       if (isOpen) toggleOpen();
       setConfirmed(true);
@@ -123,20 +133,37 @@ export function BetslipDrawer() {
           </DrawerHeader>
 
           {riskWarning && (
-            <div className="border-bulb/40 text-bulb mx-4 mb-2 flex items-start gap-2 rounded-sm border px-3 py-2 text-xs">
+            <div
+              role="alert"
+              className={cn(
+                'mx-4 mb-2 flex items-start gap-2 rounded-sm border px-3 py-2 text-xs',
+                blocked
+                  ? 'border-destructive/50 text-destructive bg-destructive/10'
+                  : 'border-bulb/40 text-bulb'
+              )}
+            >
               <AlertTriangle className="mt-0.5 size-4 shrink-0" strokeWidth={1.5} />
               <div className="flex-1">
-                <p className="font-medium">Juego Responsable</p>
+                <p className="font-medium">
+                  {blocked ? 'Apuesta no confirmada — Juego Responsable' : 'Juego Responsable'}
+                </p>
                 <p>{riskWarning}</p>
+                {blocked && (
+                  <p className="mt-1 text-[11px] opacity-80">
+                    No te llevamos al operador. Baja el stake o esperá antes de intentar de nuevo.
+                  </p>
+                )}
               </div>
-              <button
-                type="button"
-                onClick={() => setRiskWarning(null)}
-                aria-label="Cerrar aviso"
-                className="shrink-0"
-              >
-                <X className="size-3.5" />
-              </button>
+              {!blocked && (
+                <button
+                  type="button"
+                  onClick={() => setRiskWarning(null)}
+                  aria-label="Cerrar aviso"
+                  className="shrink-0"
+                >
+                  <X className="size-3.5" />
+                </button>
+              )}
             </div>
           )}
 
@@ -187,7 +214,13 @@ export function BetslipDrawer() {
                   type="number"
                   min={1}
                   value={stake}
-                  onChange={(e) => setStake(Number(e.target.value) || 0)}
+                  onChange={(e) => {
+                    setStake(Number(e.target.value) || 0);
+                    if (blocked) {
+                      setBlocked(false);
+                      setRiskWarning(null);
+                    }
+                  }}
                   className="price w-24"
                 />
               </label>
