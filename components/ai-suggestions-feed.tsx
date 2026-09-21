@@ -94,6 +94,7 @@ export function AiSuggestionsFeed({
                     selection: bet.selection,
                     market: bet.market,
                     odds: bet.odds,
+                    source: 'jev',
                   })
                 }
               >

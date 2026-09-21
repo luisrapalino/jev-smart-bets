@@ -8,6 +8,9 @@ export interface BetSelection {
   selection: string;
   market: string;
   odds: number;
+  // De donde vino la seleccion: sugerida por Jev o elegida a mano en el
+  // tablero. Alimenta el track record de Jev (ver components/jev-track-record.tsx).
+  source?: 'jev' | 'board';
 }
 
 interface BetslipState {

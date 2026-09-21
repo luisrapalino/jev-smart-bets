@@ -14,6 +14,10 @@ export interface StoredSelection {
   market: string;
   selection: string;
   odds: number;
+  // De donde salio la seleccion: una sugerencia de Jev o el tablero
+  // elegido a mano. Ausente en apuestas guardadas antes de este campo.
+  // Sin esto no hay forma de medir si las sugerencias de Jev funcionan.
+  source?: 'jev' | 'board';
 }
 
 // `session_id` es la identidad anonima por dispositivo (ver lib/session.ts).

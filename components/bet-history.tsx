@@ -6,6 +6,8 @@ import { AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn, formatCurrency, formatOdds } from '@/lib/utils';
 import { TeamBadge } from '@/lib/ui/team-badge';
+import { JevTrackRecordPanel } from '@/components/jev-track-record';
+import { computeJevTrackRecord } from '@/lib/stats/jev-track-record';
 import type { SavedBet } from '@/lib/db/repository';
 
 async function fetchBets(): Promise<SavedBet[]> {
@@ -64,8 +66,11 @@ export function BetHistory() {
     );
   }
 
+  const trackRecord = computeJevTrackRecord(data);
+
   return (
     <div>
+      {trackRecord && <JevTrackRecordPanel record={trackRecord} />}
       {data.map((bet) => (
         <article key={bet.id} className="border-rule border-b px-4 py-3 last:border-b-0">
           <div className="flex items-baseline justify-between gap-3">
@@ -95,6 +100,14 @@ export function BetHistory() {
                 <span className="text-chalk-dim hidden truncate text-xs sm:block">
                   {sel.selection}
                 </span>
+                {sel.source === 'jev' && (
+                  <span
+                    title="Sugerida por Jev"
+                    className="text-bulb border-bulb/40 rounded-full border px-1 text-[9px] leading-tight font-semibold"
+                  >
+                    Jev
+                  </span>
+                )}
                 <span className="price text-bulb text-sm font-bold">
                   {formatOdds(sel.odds)}
                 </span>

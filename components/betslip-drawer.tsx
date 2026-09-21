@@ -55,6 +55,7 @@ export function BetslipDrawer() {
             market: s.market,
             selection: s.selection,
             odds: s.odds,
+            source: s.source,
           })),
         }),
       });

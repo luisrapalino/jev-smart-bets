@@ -68,6 +68,7 @@ export function MatchRow({ match }: { match: Match }) {
                   selection: teamForLabel[sel.label],
                   market: 'Resultado Final (1X2)',
                   odds: sel.odds,
+                  source: 'board',
                 })
               }
               aria-label={

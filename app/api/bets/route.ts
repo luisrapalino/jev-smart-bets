@@ -13,6 +13,7 @@ const SelectionSchema = z.object({
   market: z.string(),
   selection: z.string(),
   odds: z.number().positive(),
+  source: z.enum(['jev', 'board']).optional(),
 });
 
 const ConfirmBetSchema = z.object({
