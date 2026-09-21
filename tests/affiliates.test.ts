@@ -11,13 +11,13 @@ afterEach(() => {
 });
 
 describe('buildAffiliateUrl', () => {
-  it('apunta a la home del operador cuando no hay id de afiliado', () => {
-    expect(buildAffiliateUrl('bet365')).toBe('https://www.bet365.com/');
+  it('apunta a la seccion de futbol del operador cuando no hay id de afiliado', () => {
+    expect(buildAffiliateUrl('bet365')).toBe('https://www.bet365.com/#/AS/B1/');
   });
 
   it('agrega el id con el parametro propio de cada operador', () => {
     process.env.AFFILIATE_ID_BET365 = 'abc123';
-    expect(buildAffiliateUrl('bet365')).toBe('https://www.bet365.com/?affiliate=abc123');
+    expect(buildAffiliateUrl('bet365')).toBe('https://www.bet365.com/?affiliate=abc123#/AS/B1/');
   });
 
   it('falla ante un operador desconocido en vez de generar un enlace roto', () => {
