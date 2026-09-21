@@ -94,19 +94,27 @@ async function classifyRiskProfile(
   };
 }
 
+// Para "Bajo"/"Medio" el favorito suele caer solo en el rango: respaldar
+// al favorito ES la apuesta segura. Para "Alto" exigir que el FAVORITO
+// tenga cuota >=3 casi nunca ocurre (el margen de la casa hace que sea
+// matematicamente raro que las tres cuotas de un 1X2 esten ahi a la vez),
+// asi que se busca cualquier seleccion del partido -favorita o no- que
+// caiga en el rango de riesgo pedido.
 function pickMatchesForRisk(matches: Match[], riskProfile: RiskProfile, count = 2) {
   const [min, max] = RISK_ODDS_RANGE[riskProfile];
 
   return matches
     .filter((match) => !match.isLive)
-    .map((match) => ({
-      match,
-      favorite: match.market1x2.reduce((a, b) => (a.odds < b.odds ? a : b)),
-    }))
-    .filter(({ favorite }) => favorite.odds >= min && favorite.odds < max)
-    .sort((a, b) => a.favorite.odds - b.favorite.odds)
+    .map((match) => {
+      const inRange = match.market1x2.filter((o) => o.odds >= min && o.odds < max);
+      if (inRange.length === 0) return null;
+      const pick = inRange.reduce((a, b) => (a.odds < b.odds ? a : b));
+      return { match, pick };
+    })
+    .filter((entry): entry is { match: Match; pick: Match['market1x2'][number] } => entry !== null)
+    .sort((a, b) => a.pick.odds - b.pick.odds)
     .slice(0, count)
-    .map(({ match, favorite }) => ({
+    .map(({ match, pick: favorite }) => ({
       matchId: match.id,
       matchName: `${match.homeTeam} vs ${match.awayTeam}`,
       selection:
