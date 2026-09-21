@@ -1,9 +1,19 @@
-import { and, eq, gte, isNull } from 'drizzle-orm';
+import { and, desc, eq, gte, isNull } from 'drizzle-orm';
 
 import { db, isDatabaseEnabled } from '../db';
 import { magicLinkTokens, users } from '../db/schema';
 
 const TOKEN_TTL_MINUTES = 15;
+// Sin esto, pedir un link es gratis y anonimo: cualquiera puede
+// bombardear la casilla de otra persona pegandole al endpoint en loop.
+// Un cooldown por email, sin infraestructura extra, corta ese abuso.
+const REQUEST_COOLDOWN_SECONDS = 60;
+
+export class MagicLinkCooldownError extends Error {
+  constructor(public retryAfterSeconds: number) {
+    super(`Espera ${retryAfterSeconds}s antes de pedir otro link`);
+  }
+}
 
 export interface MagicLinkRequestResult {
   token: string;
@@ -19,6 +29,20 @@ export interface MagicLinkRequestResult {
 export async function requestMagicLink(email: string): Promise<MagicLinkRequestResult> {
   if (!isDatabaseEnabled) {
     throw new Error('DATABASE_URL no esta configurada: las cuentas necesitan base de datos');
+  }
+
+  const [lastRequest] = await db!
+    .select({ createdAt: magicLinkTokens.createdAt })
+    .from(magicLinkTokens)
+    .where(eq(magicLinkTokens.email, email))
+    .orderBy(desc(magicLinkTokens.createdAt))
+    .limit(1);
+
+  if (lastRequest) {
+    const elapsedSeconds = (Date.now() - lastRequest.createdAt.getTime()) / 1000;
+    if (elapsedSeconds < REQUEST_COOLDOWN_SECONDS) {
+      throw new MagicLinkCooldownError(Math.ceil(REQUEST_COOLDOWN_SECONDS - elapsedSeconds));
+    }
   }
 
   const expiresAt = new Date(Date.now() + TOKEN_TTL_MINUTES * 60 * 1000);

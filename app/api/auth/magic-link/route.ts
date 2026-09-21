@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
-import { requestMagicLink } from '@/lib/auth/magic-link';
+import { MagicLinkCooldownError, requestMagicLink } from '@/lib/auth/magic-link';
 import { sendMagicLinkEmail } from '@/lib/auth/send-magic-link-email';
 import { isDatabaseEnabled } from '@/lib/db';
 
@@ -34,7 +34,13 @@ export async function POST(req: Request) {
       // manda al cliente si el correo salio de verdad.
       devLink: delivered ? undefined : verifyUrl,
     });
-  } catch {
+  } catch (error) {
+    if (error instanceof MagicLinkCooldownError) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: 429, headers: { 'Retry-After': String(error.retryAfterSeconds) } }
+      );
+    }
     return NextResponse.json({ error: 'No se pudo generar el link' }, { status: 500 });
   }
 }
