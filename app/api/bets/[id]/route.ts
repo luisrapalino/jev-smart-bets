@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
 import { betsFor } from '@/lib/db/repository';
-import { getOrCreateSessionId } from '@/lib/session';
+import { getIdentityKey } from '@/lib/session';
 
 const SettleBetSchema = z.object({
   status: z.enum(['WON', 'LOST']),
@@ -19,7 +19,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     }
 
     // Acotado a la sesion: una apuesta de otro dispositivo no existe aqui.
-    const sessionId = await getOrCreateSessionId();
+    const sessionId = await getIdentityKey();
     const bet = await betsFor(sessionId).settleBet(id, parsed.data.status);
 
     if (!bet) {

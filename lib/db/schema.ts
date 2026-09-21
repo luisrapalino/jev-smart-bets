@@ -36,6 +36,26 @@ export const userPrompts = pgTable(
   (table) => [index('user_prompts_session_idx').on(table.sessionId, table.createdAt)]
 );
 
+// Cuentas reales, opcionales: sin esto la app sigue funcionando por
+// sesion anonima (ver lib/session.ts). Solo existen para que el track
+// record de Jev y el historial sobrevivan un cambio de dispositivo, que
+// es lo unico que una cookie no puede dar.
+export const users = pgTable('users', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  email: text('email').notNull().unique(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// Token de un solo uso para el login por magic link. `consumedAt` no
+// nulo o `expiresAt` vencido invalidan el token; ver lib/auth/magic-link.ts.
+export const magicLinkTokens = pgTable('magic_link_tokens', {
+  token: text('token').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  email: text('email').notNull(),
+  expiresAt: timestamp('expires_at').notNull(),
+  consumedAt: timestamp('consumed_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
 export const betHistory = pgTable(
   'bet_history',
   {

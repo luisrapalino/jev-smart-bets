@@ -1,4 +1,5 @@
 import { BoardNav } from '@/components/board-nav';
+import { AuthWidget } from '@/components/auth-widget';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   // Sin credenciales el proyecto sigue siendo usable, pero conviene decir
@@ -21,14 +22,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             JEV SMART BETS
           </span>
           <BoardNav />
-          {(isDemo || jevSimulated) && (
-            <span
-              className="border-rule text-chalk-dim ml-auto rounded-sm border px-1.5 py-0.5 text-[10px]"
-              title={`Modo demo: ${demoNote}. Configura .env.local para usar datos reales.`}
-            >
-              demo
-            </span>
-          )}
+          <div className="ml-auto flex items-center gap-2">
+            {!isDemo && <AuthWidget />}
+            {(isDemo || jevSimulated) && (
+              <span
+                className="border-rule text-chalk-dim rounded-sm border px-1.5 py-0.5 text-[10px]"
+                title={`Modo demo: ${demoNote}. Configura .env.local para usar datos reales.`}
+              >
+                demo
+              </span>
+            )}
+          </div>
         </div>
       </header>
       <main className="flex-1">{children}</main>

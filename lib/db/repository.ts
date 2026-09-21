@@ -177,3 +177,34 @@ function memoryRepository(sessionId: string): BetsRepository {
 export function betsFor(sessionId: string): BetsRepository {
   return isDatabaseEnabled ? postgresRepository(sessionId) : memoryRepository(sessionId);
 }
+
+/**
+ * Al loguearse por magic link, la actividad de la sesion anonima previa
+ * (si la hubo) pasa a la cuenta nueva en vez de perderse: reasigna
+ * `session_id` en vez de copiar filas, asi el track record y el
+ * historial no empiezan de cero solo porque el usuario decidio crear
+ * una cuenta.
+ */
+export async function migrateAnonymousHistory(
+  fromSessionId: string,
+  toIdentityKey: string
+): Promise<void> {
+  if (!isDatabaseEnabled) {
+    for (const bet of bets) {
+      if (bet.sessionId === fromSessionId) bet.sessionId = toIdentityKey;
+    }
+    for (const prompt of prompts) {
+      if (prompt.sessionId === fromSessionId) prompt.sessionId = toIdentityKey;
+    }
+    return;
+  }
+
+  await db!
+    .update(betHistory)
+    .set({ sessionId: toIdentityKey })
+    .where(eq(betHistory.sessionId, fromSessionId));
+  await db!
+    .update(userPrompts)
+    .set({ sessionId: toIdentityKey })
+    .where(eq(userPrompts.sessionId, fromSessionId));
+}

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
 import { betsFor, type BetsRepository } from '@/lib/db/repository';
-import { getOrCreateSessionId } from '@/lib/session';
+import { getIdentityKey } from '@/lib/session';
 import { AFFILIATE_OPERATORS, buildAffiliateUrl } from '@/lib/affiliates/operators';
 import { jevClient } from '@/lib/jev/client';
 
@@ -26,7 +26,7 @@ const ConfirmBetSchema = z.object({
 
 export async function GET() {
   try {
-    const sessionId = await getOrCreateSessionId();
+    const sessionId = await getIdentityKey();
     const bets = await betsFor(sessionId).listBets(30);
     return NextResponse.json({ success: true, data: bets });
   } catch {
@@ -43,7 +43,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Datos de apuesta invalidos' }, { status: 400 });
     }
 
-    const sessionId = await getOrCreateSessionId();
+    const sessionId = await getIdentityKey();
     const repository = betsFor(sessionId);
 
     // El chequeo corre ANTES de guardar: un aviso que llega despues de

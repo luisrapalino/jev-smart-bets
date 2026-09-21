@@ -33,11 +33,13 @@ Con `DATABASE_URL` configurada, crea las tablas con `pnpm db:push` (y explórala
 - Aplica un filtro de Juego Responsable sobre la actividad reciente.
 - Conecta de forma modular con casas de apuestas afiliadas.
 
-## Identidad: sin cuentas
+## Identidad: sin cuentas obligatorias
 
-No hay registro ni login. Cada navegador recibe un identificador anónimo en una cookie `httpOnly` ([`lib/session.ts`](./lib/session.ts)), y el historial y el filtro de Juego Responsable se calculan **contra esa sesión**, nunca contra el total del sitio.
+No hace falta registrarse para usar el tablero. Cada navegador recibe un identificador anónimo en una cookie `httpOnly` ([`lib/session.ts`](./lib/session.ts)), y el historial y el filtro de Juego Responsable se calculan **contra esa sesión**, nunca contra el total del sitio.
 
-Es deliberado: la app no custodia dinero ni datos personales — eso vive en el operador — y exigir cuenta para mirar cuotas no tendría sentido. El costo es que se trata de identidad de dispositivo: al borrar cookies se empieza de cero. La columna `session_id` es la costura para enlazar cuentas reales si algún día hacen falta.
+Es deliberado: la app no custodia dinero ni datos personales — eso vive en el operador — y exigir cuenta para mirar cuotas no tendría sentido. El costo es que por defecto es identidad de dispositivo: al borrar cookies se empieza de cero.
+
+Para el que quiera que el historial (y el track record de Jev) sobrevivan un cambio de dispositivo, hay login opcional por magic link ([`lib/auth/magic-link.ts`](./lib/auth/magic-link.ts)): un email, un link de un solo uso, sin contraseña. Al entrar por primera vez, la actividad de la sesión anónima que tenías se reasigna a la cuenta nueva en vez de perderse. Sin `DATABASE_URL` configurada esta función no tiene modo demo — a diferencia del resto de las integraciones, cuentas *son* persistencia, así que no hay nada que simular sin ella.
 
 ## Qué NO hace
 
