@@ -11,6 +11,15 @@
 // falsos positivos constantes.
 export const MIN_VALUE_EDGE_PCT = 3;
 
+// Por encima de esto no se calcula edge: el de-vig proporcional asume
+// que el margen de cada libro se reparte parejo entre resultados, pero
+// en longshots reales el margen se concentra ahi ("favorite-longshot
+// bias", documentado en la literatura de apuestas deportivas desde los
+// 70s). La probabilidad justa que sale de este metodo para un longshot
+// queda sobreestimada, y el "valor" que parece haber es en buena parte
+// artefacto del metodo, no edge real.
+export const MAX_ODDS_FOR_VALUE = 8;
+
 /**
  * Quita el margen de la casa (overround) de un set de cuotas 1X2 con el
  * metodo proporcional: la probabilidad implicita de cada resultado se

@@ -1,6 +1,6 @@
 import type { Match, OddsSelection } from './types';
 import type { OddsProvider } from './adapter';
-import { computeEdge, devigProbabilities, median } from './value';
+import { computeEdge, devigProbabilities, median, MAX_ODDS_FOR_VALUE } from './value';
 
 // Libro de referencia para estimar la probabilidad justa: Pinnacle es el
 // estandar de facto por su margen bajo y limites altos (sus lineas son
@@ -127,10 +127,16 @@ function toMarket1x2(
     reference.away,
   ]);
 
+  // Mas alla de MAX_ODDS_FOR_VALUE el de-vig proporcional sobreestima la
+  // probabilidad justa (favorite-longshot bias): no se calcula edge para
+  // ese resultado, se muestra solo la cuota.
+  const edgeIfEligible = (odds: number, referenceOdds: number, fairProbability: number) =>
+    referenceOdds > MAX_ODDS_FOR_VALUE ? {} : computeEdge(odds, fairProbability);
+
   return [
-    { label: '1', odds: bestHome, ...computeEdge(bestHome, fairHome) },
-    { label: 'X', odds: bestDraw, ...computeEdge(bestDraw, fairDraw) },
-    { label: '2', odds: bestAway, ...computeEdge(bestAway, fairAway) },
+    { label: '1', odds: bestHome, ...edgeIfEligible(bestHome, reference.home, fairHome) },
+    { label: 'X', odds: bestDraw, ...edgeIfEligible(bestDraw, reference.draw, fairDraw) },
+    { label: '2', odds: bestAway, ...edgeIfEligible(bestAway, reference.away, fairAway) },
   ];
 }
 

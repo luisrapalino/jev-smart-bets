@@ -150,7 +150,7 @@ describe('adaptador de The Odds API', () => {
               key: 'h2h',
               outcomes: [
                 { name: 'Arsenal', price: 1.29 },
-                { name: 'Lille', price: 11.75 },
+                { name: 'Lille', price: 7.75 },
                 { name: 'Draw', price: 5.5 },
               ],
             },
@@ -163,23 +163,23 @@ describe('adaptador de The Odds API', () => {
               key: 'h2h',
               outcomes: [
                 { name: 'Arsenal', price: 1.25 },
-                { name: 'Lille', price: 16 },
-                { name: 'Draw', price: 5.2 },
+                { name: 'Lille', price: 8 },
+                { name: 'Draw', price: 6.4 },
               ],
             },
           ],
         },
         {
-          // Corrobora el precio del visitante; sin este segundo libro no
-          // se confiaria en el 16 de arriba (podria ser una linea vieja).
+          // Corrobora el precio del empate; sin este segundo libro no se
+          // confiaria en el 6.2 de abajo (podria ser una linea vieja).
           key: 'libro_blando_b',
           markets: [
             {
               key: 'h2h',
               outcomes: [
                 { name: 'Arsenal', price: 1.26 },
-                { name: 'Lille', price: 15.5 },
-                { name: 'Draw', price: 5.1 },
+                { name: 'Lille', price: 7.9 },
+                { name: 'Draw', price: 6.2 },
               ],
             },
           ],
@@ -189,13 +189,60 @@ describe('adaptador de The Odds API', () => {
     vi.stubGlobal('fetch', mockFetch([conValor]));
 
     const [match] = await theOddsApiProvider.getMatches();
+    const draw = match.market1x2.find((s) => s.label === 'X');
+
+    // El maximo (6.4) se descarta por no tener corroboracion; se usa la
+    // segunda cuota mas alta (6.2), respaldada por dos libros.
+    expect(draw?.odds).toBe(6.2);
+    expect(draw?.edgePct).toBeGreaterThan(0);
+    expect(draw?.fairOdds).toBeCloseTo(1 / (1 / 5.5 / (1 / 1.29 + 1 / 5.5 + 1 / 7.75)), 5);
+  });
+
+  it('no calcula edge para un resultado tan longshot que Pinnacle mismo paga mas de MAX_ODDS_FOR_VALUE', async () => {
+    // El favorite-longshot bias hace que el de-vig proporcional
+    // sobreestime la probabilidad justa de resultados muy improbables:
+    // por encima del umbral no se confia en el edge, aunque haya
+    // corroboracion entre libros.
+    const longshot = event({
+      bookmakers: [
+        {
+          key: 'pinnacle',
+          markets: [
+            {
+              key: 'h2h',
+              outcomes: [
+                { name: 'Arsenal', price: 1.1 },
+                { name: 'Lille', price: 15 },
+                { name: 'Draw', price: 7 },
+              ],
+            },
+          ],
+        },
+        {
+          key: 'libro_blando',
+          markets: [
+            {
+              key: 'h2h',
+              outcomes: [
+                { name: 'Arsenal', price: 1.08 },
+                { name: 'Lille', price: 20 },
+                { name: 'Draw', price: 7.2 },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    vi.stubGlobal('fetch', mockFetch([longshot]));
+
+    const [match] = await theOddsApiProvider.getMatches();
     const away = match.market1x2.find((s) => s.label === '2');
 
-    // El maximo (16) se descarta por no tener corroboracion; se usa la
-    // segunda cuota mas alta (15.5), respaldada por dos libros.
-    expect(away?.odds).toBe(15.5);
-    expect(away?.edgePct).toBeGreaterThan(0);
-    expect(away?.fairOdds).toBeCloseTo(1 / (1 / 11.75 / (1 / 1.29 + 1 / 5.5 + 1 / 11.75)), 5);
+    // Solo 2 libros: el 20 no tiene corroboracion, se usa el 15 de
+    // Pinnacle. La cuota se sigue mostrando; el edge no, por longshot.
+    expect(away?.odds).toBe(15);
+    expect(away?.edgePct).toBeUndefined();
+    expect(away?.fairOdds).toBeUndefined();
   });
 
   it('no persigue el maximo si es un unico libro sin corroborar (linea potencialmente vieja)', async () => {
